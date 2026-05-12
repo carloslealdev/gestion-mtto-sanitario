@@ -1,10 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   inventory,
   inventoryLabels,
   getInventoryStatus,
   type GroupInventory,
-} from "@/mock-data/inventory";
+} from "@/mock-data/inventory"
+import { useAppSelector } from "@/store/hooks"
 import {
   Package,
   Droplets,
@@ -13,7 +14,7 @@ import {
   Scissors,
   Wind,
   Waves,
-} from "lucide-react";
+} from "lucide-react"
 
 const workTeamLabels: Record<string, string> = {
   G1: "Grupo 1",
@@ -83,19 +84,29 @@ function InventoryItem({
 }
 
 export default function InventariosPage() {
-  const teams = ["G1", "G2", "G3", "TN"] as const;
+  const teams = ["G1", "G2", "G3", "TN"] as const
+  const workers = useAppSelector((state) => state.workers.workers)
+  const user = useAppSelector((state) => state.auth.user)
+
+  const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
+
+  const teamsToShow = (user?.role === "encargado" || user?.role === "general") && userWorkTeam
+    ? [userWorkTeam]
+    : teams
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Inventarios de Grupos de Trabajo
+          {(user?.role === "encargado" || user?.role === "general") ? `Inventario de Mi Grupo - ${workTeamLabels[userWorkTeam || ""]}` : "Inventarios de Grupos de Trabajo"}
         </h1>
-        <p className="text-muted-foreground">Control de insumos por grupo</p>
+        <p className="text-muted-foreground">
+          {user?.role === "encargado" ? "Control de insumos de tu grupo" : "Control de insumos por grupo"}
+        </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {teams.map((team) => (
+        {teamsToShow.map((team) => (
           <Card key={team}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">

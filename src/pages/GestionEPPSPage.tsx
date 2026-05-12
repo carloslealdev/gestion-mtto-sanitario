@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { workers, type Worker } from "@/mock-data/workers";
-import { Search, Calendar, IdCard, Users, HardHat, Glasses, Footprints, Ear, Shield } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { useAppSelector, useAppDispatch } from "@/store/hooks"
+import { setSearch, setTeamFilter } from "@/store/slices/eppSlice"
+import { Search, Calendar, IdCard, Users, HardHat, Glasses, Footprints, Ear, Shield } from "lucide-react"
 
 const workTeamLabels: Record<string, string> = {
   G1: "Grupo 1",
@@ -70,28 +70,36 @@ function getStatusBadge(nextRenewal: string) {
 }
 
 export default function GestionEPPSPage() {
-  const [search, setSearch] = useState("");
-  const [teamFilter, setTeamFilter] = useState<string>("all");
+  const dispatch = useAppDispatch()
+  const search = useAppSelector((state) => state.epp.search)
+  const teamFilter = useAppSelector((state) => state.epp.teamFilter)
+  const workers = useAppSelector((state) => state.workers.workers)
+  const user = useAppSelector((state) => state.auth.user)
 
-  const filteredWorkers = workers.filter((worker: Worker) => {
-    const searchLower = search.toLowerCase();
+  const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
+
+  const filteredWorkers = workers.filter((worker) => {
+    const userTeam = userWorkTeam
+    const matchesUserTeam = (user?.role === "encargado" || user?.role === "general") ? worker.workTeam === userTeam : true
+
+    const searchLower = search.toLowerCase()
     const matchesSearch =
       worker.cedula.toLowerCase().includes(searchLower) ||
       worker.firstName.toLowerCase().includes(searchLower) ||
       worker.lastName.toLowerCase().includes(searchLower) ||
-      worker.workTeam.toLowerCase().includes(searchLower);
-    const matchesTeam = teamFilter === "all" || worker.workTeam === teamFilter;
-    return matchesSearch && matchesTeam;
-  });
+      worker.workTeam.toLowerCase().includes(searchLower)
+    const matchesTeam = teamFilter === "all" || worker.workTeam === teamFilter
+    return matchesSearch && matchesTeam && matchesUserTeam
+  })
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Gestión de EPPs de Trabajadores
+          {(user?.role === "encargado" || user?.role === "general") ? `EPPs de Mi Grupo - ${workTeamLabels[userWorkTeam || ""]}` : "Gestión de EPPs de Trabajadores"}
         </h1>
         <p className="text-muted-foreground">
-          Control de equipos de protección personal
+          {(user?.role === "encargado" || user?.role === "general") ? "Control de equipos de protección de tu grupo" : "Control de equipos de protección personal"}
         </p>
       </div>
 
@@ -99,27 +107,29 @@ export default function GestionEPPSPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cédula, nombre o grupo..."
+            placeholder={user?.role === "encargado" ? "Buscar por cédula o nombre..." : "Buscar por cédula, nombre o grupo..."}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => dispatch(setSearch(e.target.value))}
             className="pl-10"
           />
         </div>
-        <select
-          value={teamFilter}
-          onChange={(e) => setTeamFilter(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">Todos los grupos</option>
-          <option value="G1">Grupo 1</option>
-          <option value="G2">Grupo 2</option>
-          <option value="G3">Grupo 3</option>
-          <option value="TN">Turno Normal</option>
-        </select>
+        {user?.role !== "encargado" && (
+          <select
+            value={teamFilter}
+            onChange={(e) => dispatch(setTeamFilter(e.target.value))}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="all">Todos los grupos</option>
+            <option value="G1">Grupo 1</option>
+            <option value="G2">Grupo 2</option>
+            <option value="G3">Grupo 3</option>
+            <option value="TN">Turno Normal</option>
+          </select>
+        )}
       </div>
 
       <div className="text-sm text-muted-foreground">
-        Mostrando {filteredWorkers.length} de {workers.length} trabajadores
+        Mostrando {filteredWorkers.length} {user?.role === "encargado" ? "de tu grupo" : `de ${workers.length}`} trabajadores
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

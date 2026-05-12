@@ -1,40 +1,66 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom"
 import {
-  LayoutDashboard,
   Users,
   ClipboardList,
   Settings,
   Wrench,
   Archive,
   Calendar,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { useAppSelector } from "@/store/hooks"
 
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/calendario", label: "Calendario", icon: Calendar },
-  { to: "/grupos-de-trabajo", label: "Grupos de Trabajo", icon: Users },
-  {
-    to: "/inventarios-de-grupos",
-    label: "Inventarios de Grupos",
-    icon: Archive,
-  },
-  {
-    to: "/gestion-epps-trabajadores",
-    label: "Gestión EPPS Trabajadores",
-    icon: Wrench,
-  },
-  { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList },
-];
+interface NavItem {
+  to: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  allowedRoles?: ("admin" | "encargado" | "general")[]
+}
 
-const bottomNavItems = [
-  { to: "/configuracion", label: "Configuración", icon: Settings },
-];
+const allNavItems: NavItem[] = [
+  { to: "/calendario", label: "Calendario", icon: Calendar, allowedRoles: ["admin", "encargado", "general"] },
+  { to: "/grupos-de-trabajo", label: "Grupos de Trabajo", icon: Users, allowedRoles: ["admin", "encargado", "general"] },
+  { to: "/inventarios-de-grupos", label: "Inventarios de Grupos", icon: Archive, allowedRoles: ["admin", "encargado", "general"] },
+  { to: "/gestion-epps-trabajadores", label: "Gestión EPPS Trabajadores", icon: Wrench, allowedRoles: ["admin", "encargado", "general"] },
+  { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList, allowedRoles: ["admin"] },
+]
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
+  const user = useAppSelector((state) => state.auth.user)
+  const role = user?.role || "general"
+  const location = useLocation()
+
+  const getBasePath = () => {
+    switch (role) {
+      case "admin":
+        return ""
+      case "encargado":
+        return "/encargado"
+      case "general":
+        return "/general"
+      default:
+        return ""
+    }
+  }
+
+  const basePath = getBasePath()
+
+  const filteredNavItems = allNavItems.filter((item) => {
+    if (!item.allowedRoles) return true
+    return item.allowedRoles.includes(role as "admin" | "encargado" | "general")
+  })
+
+  const isActive = (path: string) => {
+    const fullPath = basePath + path
+    if (path === "/" && (location.pathname === basePath || location.pathname === basePath + "/")) {
+      return true
+    }
+    return location.pathname === fullPath || location.pathname.startsWith(fullPath + "/")
+  }
+
   return (
     <nav className="flex flex-col h-full">
       <div className="p-4 border-b">
@@ -43,15 +69,15 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <div className="flex-1 py-4">
         <div className="space-y-1 px-2">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={basePath + item.to}
               onClick={onNavigate}
-              className={({ isActive }) =>
+              className={({ isActive: linkActive }) =>
                 cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isActive
+                  linkActive || isActive(item.to)
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )
@@ -64,31 +90,28 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
       <div className="border-t p-2">
-        {bottomNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
-        ))}
+        <NavLink
+          to={basePath + "/configuracion"}
+          onClick={onNavigate}
+          className={({ isActive: linkActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              linkActive
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )
+          }
+        >
+          <Settings className="h-5 w-5" />
+          Configuración
+        </NavLink>
       </div>
     </nav>
-  );
+  )
 }
 
 export function Sidebar() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
 
   return (
     <>
@@ -124,5 +147,5 @@ export function Sidebar() {
         </SheetContent>
       </Sheet>
     </>
-  );
+  )
 }

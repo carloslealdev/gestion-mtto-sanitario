@@ -1,0 +1,21 @@
+import { configureStore } from "@reduxjs/toolkit"
+import calendarReducer from "./slices/calendarSlice"
+import mantenimientosReducer from "./slices/mantenimientosSlice"
+import eppReducer from "./slices/eppSlice"
+import themeReducer from "./slices/themeSlice"
+import workersReducer from "./slices/workersSlice"
+import authReducer from "./slices/authSlice"
+
+export const store = configureStore({
+  reducer: {
+    calendar: calendarReducer,
+    mantenimientos: mantenimientosReducer,
+    epp: eppReducer,
+    theme: themeReducer,
+    workers: workersReducer,
+    auth: authReducer,
+  },
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
