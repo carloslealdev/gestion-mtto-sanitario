@@ -7,6 +7,7 @@ import {
   Archive,
   Calendar,
   PackagePlus,
+  Shirt,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -28,6 +29,7 @@ const allNavItems: NavItem[] = [
   { to: "/gestion-epps-trabajadores", label: "Gestión EPPS Trabajadores", icon: Wrench, allowedRoles: ["admin", "encargado", "general"] },
   { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList, allowedRoles: ["admin"] },
   { to: "/reservas-de-insumos", label: "Reservas para insumos", icon: PackagePlus, allowedRoles: ["admin", "encargado"] },
+  { to: "/reservas-de-epps", label: "Reservas para EPPs", icon: Shirt, allowedRoles: ["admin", "encargado", "general"] },
 ]
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
