@@ -1,12 +1,13 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { users } from "@/mock-data/users"
+import type { RootState } from "../index"
 
-export type UserRole = "admin" | "encargado" | "general"
+export type AuthUserRole = "admin" | "encargado" | "general"
 
 export interface AuthUser {
   username: string
   name: string
-  role: UserRole
+  role: AuthUserRole
 }
 
 interface AuthState {
@@ -29,6 +30,37 @@ const loadState = (): AuthState => {
 
 const initialState: AuthState = loadState()
 
+function mapWorkerRoleToAuthRole(workerRole: string): AuthUserRole {
+  return workerRole === "trabajador-encargado" ? "encargado" : "general"
+}
+
+export const loginAsync = createAsyncThunk(
+  "auth/loginAsync",
+  async ({ username, password }: { username: string; password: string }, { getState }) => {
+    const foundUser = users.find((u) => u.username === username && u.password === password)
+
+    if (!foundUser) {
+      throw new Error("Usuario o contraseña incorrectos")
+    }
+
+    let role: AuthUserRole = foundUser.role as AuthUserRole
+
+    if (foundUser.role !== "admin") {
+      const state = getState() as RootState
+      const worker = state.workers.workers.find((w) => w.cedula.replace("V-", "") === username)
+      if (worker) {
+        role = mapWorkerRoleToAuthRole(worker.role)
+      }
+    }
+
+    return {
+      username: foundUser.username,
+      name: foundUser.name,
+      role,
+    }
+  }
+)
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -47,7 +79,7 @@ const authSlice = createSlice({
         state.user = {
           username: foundUser.username,
           name: foundUser.name,
-          role: foundUser.role as UserRole,
+          role: foundUser.role as AuthUserRole,
         }
         state.error = null
         saveState(state)
@@ -64,6 +96,31 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
+    updateUserRoleByCedula: (
+      state,
+      action: PayloadAction<{ cedula: string; workerRole: string }>
+    ) => {
+      const cedulaWithoutV = action.payload.cedula.replace("V-", "")
+      if (state.user && state.user.username === cedulaWithoutV) {
+        state.user.role = mapWorkerRoleToAuthRole(action.payload.workerRole)
+        saveState(state)
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loginAsync.pending, (state) => {
+        state.error = null
+      })
+      .addCase(loginAsync.fulfilled, (state, action) => {
+        state.isAuthenticated = true
+        state.user = action.payload
+        state.error = null
+        saveState(state)
+      })
+      .addCase(loginAsync.rejected, (state, action) => {
+        state.error = action.error.message || "Error desconocido"
+      })
   },
 })
 
@@ -75,5 +132,5 @@ function saveState(state: AuthState) {
   }
 }
 
-export const { login, logout, clearError } = authSlice.actions
+export const { login, logout, clearError, updateUserRoleByCedula } = authSlice.actions
 export default authSlice.reducer

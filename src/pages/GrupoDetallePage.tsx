@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/context-menu"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { updateWorker, type WorkerRole, type WorkTeam } from "@/store/slices/workersSlice"
+import { updateUserRoleByCedula } from "@/store/slices/authSlice"
 import { ArrowLeft, User, Calendar, IdCard } from "lucide-react"
 
 const workTeamLabels: Record<string, string> = {
@@ -169,6 +170,11 @@ export default function GrupoDetallePage() {
       }
     }
     dispatch(updateWorker({ cedula: workerCedula, role: newRole }))
+    
+    const currentUserCedula = user?.username?.replace("V-", "") || ""
+    if (currentUserCedula === workerCedula.replace("V-", "")) {
+      dispatch(updateUserRoleByCedula({ cedula: workerCedula, workerRole: newRole }))
+    }
   }
 
   const handleTeamChange = (workerCedula: string, newTeam: WorkTeam) => {
@@ -184,8 +190,12 @@ export default function GrupoDetallePage() {
       }
     }
 
+    const currentUserCedula = user?.username?.replace("V-", "") || ""
+    const isCurrentUser = currentUserCedula === workerCedula.replace("V-", "")
+    
     dispatch(updateWorker({ cedula: workerCedula, workTeam: newTeam }))
-    if (newTeam !== teamId) {
+    
+    if (isCurrentUser && newTeam !== teamId) {
       navigate(`/grupos-de-trabajo/${newTeam}`)
     }
   }

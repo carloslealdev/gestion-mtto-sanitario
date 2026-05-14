@@ -5,6 +5,7 @@ import eppReducer from "./slices/eppSlice"
 import themeReducer from "./slices/themeSlice"
 import workersReducer from "./slices/workersSlice"
 import authReducer from "./slices/authSlice"
+import reservationsReducer from "./slices/reservationsSlice"
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     theme: themeReducer,
     workers: workersReducer,
     auth: authReducer,
+    reservations: reservationsReducer,
   },
 })
 

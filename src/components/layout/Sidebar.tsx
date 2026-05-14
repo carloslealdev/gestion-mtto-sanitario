@@ -6,6 +6,7 @@ import {
   Wrench,
   Archive,
   Calendar,
+  PackagePlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -26,6 +27,7 @@ const allNavItems: NavItem[] = [
   { to: "/inventarios-de-grupos", label: "Inventarios de Grupos", icon: Archive, allowedRoles: ["admin", "encargado", "general"] },
   { to: "/gestion-epps-trabajadores", label: "Gestión EPPS Trabajadores", icon: Wrench, allowedRoles: ["admin", "encargado", "general"] },
   { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList, allowedRoles: ["admin"] },
+  { to: "/reservas-de-insumos", label: "Reservas para insumos", icon: PackagePlus, allowedRoles: ["admin", "encargado"] },
 ]
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {

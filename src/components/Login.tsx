@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
-import { login, clearError } from "@/store/slices/authSlice"
+import { logout, clearError, loginAsync } from "@/store/slices/authSlice"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,8 @@ export function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    dispatch(login({ username, password }))
+    dispatch(logout())
+    dispatch(loginAsync({ username, password }))
   }
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

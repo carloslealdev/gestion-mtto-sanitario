@@ -1,8 +1,8 @@
 export interface User {
-  username: string
-  password: string
-  name: string
-  role: "admin" | "encargado" | "general"
+  username: string;
+  password: string;
+  name: string;
+  role: "admin" | "encargado" | "general";
 }
 
 export const users: User[] = [
@@ -41,7 +41,7 @@ export const users: User[] = [
   },
   // G2 - Encargado
   {
-    username: "56789012",
+    username: "23423633",
     password: "123456",
     name: "Carlos Leal",
     role: "encargado",
@@ -117,4 +117,4 @@ export const users: User[] = [
     name: "Fernando Herrera",
     role: "general",
   },
-]
+];

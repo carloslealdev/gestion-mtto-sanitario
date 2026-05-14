@@ -13,6 +13,7 @@ import GrupoDetallePage from "@/pages/GrupoDetallePage"
 import GestionEPPSPage from "@/pages/GestionEPPSPage"
 import InventariosPage from "@/pages/InventariosPage"
 import CalendarioPage from "@/pages/CalendarioPage"
+import ReservasPage from "@/pages/ReservasPage"
 import { useAppSelector } from "./store/hooks"
 
 function ThemeInitializer() {
@@ -88,6 +89,12 @@ function AppRoutes() {
           </>
         )}
         
+        {(role === "admin" || role === "encargado") && (
+          <>
+            <Route path="reservas-de-insumos" element={<ReservasPage />} />
+          </>
+        )}
+
         {role === "admin" && (
           <>
             <Route path="equipos" element={<EquiposPage />} />

@@ -79,8 +79,13 @@ export default function GestionEPPSPage() {
   const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
 
   const filteredWorkers = workers.filter((worker) => {
-    const userTeam = userWorkTeam
-    const matchesUserTeam = (user?.role === "encargado" || user?.role === "general") ? worker.workTeam === userTeam : true
+    if (user?.role === "general") {
+      return worker.cedula.replace("V-", "") === user.username
+    }
+
+    if (user?.role === "encargado") {
+      return worker.workTeam === userWorkTeam
+    }
 
     const searchLower = search.toLowerCase()
     const matchesSearch =
@@ -89,17 +94,17 @@ export default function GestionEPPSPage() {
       worker.lastName.toLowerCase().includes(searchLower) ||
       worker.workTeam.toLowerCase().includes(searchLower)
     const matchesTeam = teamFilter === "all" || worker.workTeam === teamFilter
-    return matchesSearch && matchesTeam && matchesUserTeam
+    return matchesSearch && matchesTeam
   })
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {(user?.role === "encargado" || user?.role === "general") ? `EPPs de Mi Grupo - ${workTeamLabels[userWorkTeam || ""]}` : "Gestión de EPPs de Trabajadores"}
+          {user?.role === "general" ? `Mis EPPs - ${workTeamLabels[userWorkTeam || ""]}` : (user?.role === "encargado" ? `EPPs de Mi Grupo - ${workTeamLabels[userWorkTeam || ""]}` : "Gestión de EPPs de Trabajadores")}
         </h1>
         <p className="text-muted-foreground">
-          {(user?.role === "encargado" || user?.role === "general") ? "Control de equipos de protección de tu grupo" : "Control de equipos de protección personal"}
+          {user?.role === "general" ? "Control de tus equipos de protección personal" : (user?.role === "encargado" ? "Control de equipos de protección de tu grupo" : "Control de equipos de protección personal")}
         </p>
       </div>
 
