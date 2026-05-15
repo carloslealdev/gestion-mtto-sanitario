@@ -32,9 +32,12 @@ gestion-mtto-sanitario/
 │   │       ├── authSlice.ts            # Autenticacion y roles de usuario
 │   │       ├── calendarSlice.ts         # Mantenimientos del calendario
 │   │       ├── eppSlice.ts              # Filtros de busqueda EPPs
+│   │       ├── eppReservationsSlice.ts  # Reservas de EPPs
+│   │       ├── inventorySlice.ts        # Inventario de insumos (estado global)
 │   │       ├── mantenimientosSlice.ts   # Filtros de busqueda lineas
+│   │       ├── reservationsSlice.ts     # Reservas de insumos
 │   │       ├── themeSlice.ts             # Tema claro/oscuro
-│   │       └── workersSlice.ts           # Datos de trabajadores (rol/grupo)
+│   │       └── workersSlice.ts           # Datos de trabajadores (rol/grupo/EPPs)
 │   ├── helpers/
 │   │   ├── rotation.ts                  # Logica de rotacion de grupos
 │   │   └── normalize.ts                 # Normalizacion de nombres
@@ -55,7 +58,9 @@ gestion-mtto-sanitario/
 │   │   ├── GrupoDetallePage.tsx        # Detalle de grupo (click derecho para admin)
 │   │   ├── GestionEPPSPage.tsx         # Gestion de EPPs por trabajador
 │   │   ├── InventariosPage.tsx          # Inventario de insumos por grupo
-│   │   └── CalendarioPage.tsx           # Calendario semanal de turnos y mantenimientos
+│   │   ├── CalendarioPage.tsx           # Calendario semanal de turnos y mantenimientos
+│   │   ├── ReservasPage.tsx              # Reservas de insumos (admin/encargado)
+│   │   └── ReservasEPPsPage.tsx         # Reservas de EPPs (todos los roles)
 │   ├── App.tsx                          # Configuracion de rutas
 │   ├── main.tsx                         # Entry point
 │   └── index.css                        # Estilos Tailwind + variables CSS
@@ -85,7 +90,7 @@ gestion-mtto-sanitario/
 | Rol | Ruta Base | Pagina Inicial |
 |-----|-----------|----------------|
 | admin | `/` | Dashboard |
-| encargad | `/encargado` | Calendario |
+| encargado | `/encargado` | Calendario |
 | general | `/general` | Calendario |
 
 ### Persistencia
@@ -96,7 +101,19 @@ Todos los estados se persisten en localStorage:
 - `mantenimientosState` - Filtro de busqueda
 - `eppState` - Filtros de busqueda EPPs
 - `theme` - Tema claro/oscuro
-- `workersState` - Modificaciones de trabajadores
+- `workersState` - Modificaciones de trabajadores y fechas de EPPs
+- `eppReservationsState` - Reservas de EPPs
+- `reservationsState` - Reservas de insumos
+- `inventoryState` - Inventario de insumos (modificado al recibir reservas)
+
+## Funcionalidades Especiales
+
+### Renovacion Automatica de EPPs
+Cuando un trabajador (encargado o general) marca una reserva de EPPs como recibida:
+- **Recibida completa**: todas las fechas de EPPs se actualizan
+- **Recibida parcial**: solo los EPPs recibidos actualizan sus fechas
+- `lastRenewal` se establece a la fecha actual
+- `nextRenewal` se establece a 3 meses desde la fecha actual
 
 ## Mock Data
 
@@ -162,10 +179,21 @@ Indicadores:
 - Items con indicadores de estado (optimo/bajo/sin_stock)
 
 ### GestionEPPSPage
-- Trabajadoress con EPPs (admin: todos, encargado/general: solo su grupo)
+- Trabajadores con EPPs (admin: todos, encargado/general: solo su grupo)
 - Busqueda por cedula/nombre
 - Filtro por grupo (admin)
 - Grid de EPPs con estado: vigente/por vencer/vencido
+
+### ReservasPage (admin/encargado)
+- Crear reservas de insumos para un grupo de trabajo
+- Marcar reservas como recibidas (actualiza inventario global)
+- Historial de reservas con filtros
+
+### ReservasEPPsPage (todos los roles)
+- Crear reservas de EPPs para trabajadores
+- Marcar como recibida completa o parcial (actualiza fechas de renovacion)
+- admin: puede crear reservas para cualquier trabajador
+- encargado/general: solo reservas propias o de su grupo
 
 ### MantenimientosPage
 - Lista de lineas de produccion con sus maquinas

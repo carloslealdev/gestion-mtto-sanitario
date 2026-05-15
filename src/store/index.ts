@@ -7,6 +7,7 @@ import workersReducer from "./slices/workersSlice"
 import authReducer from "./slices/authSlice"
 import reservationsReducer from "./slices/reservationsSlice"
 import eppReservationsReducer from "./slices/eppReservationsSlice"
+import inventoryReducer from "./slices/inventorySlice"
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     auth: authReducer,
     reservations: reservationsReducer,
     eppReservations: eppReservationsReducer,
+    inventory: inventoryReducer,
   },
 })
 

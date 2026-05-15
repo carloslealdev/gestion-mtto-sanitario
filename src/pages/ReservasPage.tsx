@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { addReservation, updateReservationStatus, setReceivedItems, type ReservationItem } from "@/store/slices/reservationsSlice"
+import { addToInventory } from "@/store/slices/inventorySlice"
 import { inventoryLabels, type GroupInventory } from "@/mock-data/inventory"
 import { workers } from "@/mock-data/workers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -126,13 +127,22 @@ export default function ReservasPage() {
   }
 
   const handleStatusChange = (id: string, status: string) => {
+    const reservation = reservations.find((r) => r.id === id)
+    if (!reservation) return
+
     if (status === "retirada_parcial") {
-      const reservation = reservations.find((r) => r.id === id)
-      if (reservation) {
-        setPartialReceiveModal({ id, items: [...reservation.items] })
-        setReceivedItemsLocal([...reservation.items])
-      }
+      setPartialReceiveModal({ id, items: [...reservation.items] })
+      setReceivedItemsLocal([...reservation.items])
     } else {
+      if (status === "retirada_completa") {
+        reservation.items.forEach((item) => {
+          dispatch(addToInventory({
+            team: reservation.team,
+            item: item.item as keyof GroupInventory,
+            quantity: item.quantity,
+          }))
+        })
+      }
       dispatch(updateReservationStatus({ id, status }))
     }
   }
@@ -148,7 +158,17 @@ export default function ReservasPage() {
   }
 
   const handleFinalizePartialReceive = () => {
-    if (partialReceiveModal && receivedItems.length >= 0) {
+    if (partialReceiveModal) {
+      const reservation = reservations.find((r) => r.id === partialReceiveModal.id)
+      if (reservation) {
+        receivedItems.forEach((item) => {
+          dispatch(addToInventory({
+            team: reservation.team,
+            item: item.item as keyof GroupInventory,
+            quantity: item.quantity,
+          }))
+        })
+      }
       dispatch(updateReservationStatus({ id: partialReceiveModal.id, status: "retirada_parcial" }))
       dispatch(setReceivedItems({ id: partialReceiveModal.id, receivedItems }))
       setPartialReceiveModal(null)

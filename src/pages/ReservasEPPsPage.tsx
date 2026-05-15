@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { addEPPReservation, updateEPPReservationStatus, setEPPReceivedItems, type EPPReservationItem } from "@/store/slices/eppReservationsSlice"
+import { updateWorkerEPP } from "@/store/slices/workersSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -151,6 +152,20 @@ export default function ReservasEPPsPage() {
         setPartialReceiveModal({ id, items: [...reservation.items] })
         setReceivedItemsLocal([...reservation.items])
       }
+    } else if (status === "retirada_completa") {
+      const reservation = reservations.find((r) => r.id === id)
+      if (reservation) {
+        const now = new Date().toISOString()
+        const threeMonthsLater = new Date()
+        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
+        const eppUpdates = reservation.items.map((item) => ({
+          epp: item.epp as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
+          lastRenewal: now,
+          nextRenewal: threeMonthsLater.toISOString(),
+        }))
+        dispatch(updateWorkerEPP({ cedula: reservation.workerCedula, epps: eppUpdates }))
+        dispatch(updateEPPReservationStatus({ id, status }))
+      }
     } else {
       dispatch(updateEPPReservationStatus({ id, status }))
     }
@@ -168,6 +183,21 @@ export default function ReservasEPPsPage() {
 
   const handleFinalizePartialReceive = () => {
     if (partialReceiveModal && receivedItems.length >= 0) {
+      const validReceivedItems = receivedItems.filter((item) => item.quantity > 0)
+      if (validReceivedItems.length > 0) {
+        const now = new Date().toISOString()
+        const threeMonthsLater = new Date()
+        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
+        const eppUpdates = validReceivedItems.map((item) => ({
+          epp: item.epp as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
+          lastRenewal: now,
+          nextRenewal: threeMonthsLater.toISOString(),
+        }))
+        const reservation = reservations.find((r) => r.id === partialReceiveModal.id)
+        if (reservation) {
+          dispatch(updateWorkerEPP({ cedula: reservation.workerCedula, epps: eppUpdates }))
+        }
+      }
       dispatch(updateEPPReservationStatus({ id: partialReceiveModal.id, status: "retirada_parcial" }))
       dispatch(setEPPReceivedItems({ id: partialReceiveModal.id, receivedItems }))
       setPartialReceiveModal(null)

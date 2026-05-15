@@ -10,6 +10,17 @@ export interface WorkerUpdate {
   workTeam?: WorkTeam
 }
 
+export interface EPPUpdateEntry {
+  epp: "casco" | "lentes" | "botas" | "auditivo" | "fullFace"
+  lastRenewal: string
+  nextRenewal: string
+}
+
+export interface WorkerEPPUpdate {
+  cedula: string
+  epps: EPPUpdateEntry[]
+}
+
 interface WorkersState {
   workers: typeof initialWorkers
 }
@@ -41,6 +52,19 @@ const workersSlice = createSlice({
         saveState(state)
       }
     },
+    updateWorkerEPP: (state, action: PayloadAction<WorkerEPPUpdate>) => {
+      const { cedula, epps } = action.payload
+      const worker = state.workers.find((w) => w.cedula === cedula)
+      if (worker) {
+        epps.forEach((eppUpdate) => {
+          if (worker.epps[eppUpdate.epp]) {
+            worker.epps[eppUpdate.epp].lastRenewal = eppUpdate.lastRenewal
+            worker.epps[eppUpdate.epp].nextRenewal = eppUpdate.nextRenewal
+          }
+        })
+        saveState(state)
+      }
+    },
     resetWorkers: (state) => {
       state.workers = initialWorkers
       saveState(state)
@@ -56,5 +80,5 @@ function saveState(state: WorkersState) {
   }
 }
 
-export const { updateWorker, resetWorkers } = workersSlice.actions
+export const { updateWorker, updateWorkerEPP, resetWorkers } = workersSlice.actions
 export default workersSlice.reducer

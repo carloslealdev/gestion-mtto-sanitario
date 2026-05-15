@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  inventory,
   inventoryLabels,
   getInventoryStatus,
   type GroupInventory,
@@ -87,6 +86,7 @@ export default function InventariosPage() {
   const teams = ["G1", "G2", "G3", "TN"] as const
   const workers = useAppSelector((state) => state.workers.workers)
   const user = useAppSelector((state) => state.auth.user)
+  const inventory = useAppSelector((state) => state.inventory.inventory)
 
   const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
 
