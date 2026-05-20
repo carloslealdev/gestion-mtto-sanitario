@@ -1,10 +1,10 @@
 import { Navigate } from "react-router-dom"
 import { useAppSelector } from "@/store/hooks"
-import type { UserRole } from "@/store/slices/authSlice"
+import type { AuthUserRole } from "@/store/slices/authSlice"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  allowedRoles?: UserRole[]
+  allowedRoles?: AuthUserRole[]
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {

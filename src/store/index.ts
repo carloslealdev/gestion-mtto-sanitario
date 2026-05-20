@@ -8,6 +8,7 @@ import authReducer from "./slices/authSlice"
 import reservationsReducer from "./slices/reservationsSlice"
 import requestsReducer from "./slices/requestsSlice"
 import eppReservationsReducer from "./slices/eppReservationsSlice"
+import eppRequestsReducer from "./slices/eppRequestsSlice"
 import inventoryReducer from "./slices/inventorySlice"
 
 export const store = configureStore({
@@ -21,6 +22,7 @@ export const store = configureStore({
     reservations: reservationsReducer,
     requests: requestsReducer,
     eppReservations: eppReservationsReducer,
+    eppRequests: eppRequestsReducer,
     inventory: inventoryReducer,
   },
 })

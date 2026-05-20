@@ -210,6 +210,9 @@ export default function GestionEPPSPage() {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">Próxima:</span>
+                            <span>{formatDate(epp.nextRenewal)}</span>
+                          </div>
+                          <div className="flex justify-end mt-1">
                             {getStatusBadge(epp.nextRenewal)}
                           </div>
                         </div>

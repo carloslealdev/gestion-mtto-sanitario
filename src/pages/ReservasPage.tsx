@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addReservation, updateReservationStatus, setReceivedItems, type ReservationItem } from "@/store/slices/reservationsSlice"
+import { addReservation, updateReservationStatus, setReceivedItems, type ReservationItem, type ReservationStatus } from "@/store/slices/reservationsSlice"
 import { addRequest, updateRequestStatus, setApprovedItems, type RequestItem } from "@/store/slices/requestsSlice"
 import { addToInventory } from "@/store/slices/inventorySlice"
 import { inventoryLabels, type GroupInventory } from "@/mock-data/inventory"
@@ -181,7 +181,7 @@ export default function ReservasPage() {
     setShowRequestForm(false)
   }
 
-  const handleStatusChange = (id: string, status: string) => {
+  const handleStatusChange = (id: string, status: ReservationStatus) => {
     const reservation = reservations.find((r) => r.id === id)
     if (!reservation) return
 
