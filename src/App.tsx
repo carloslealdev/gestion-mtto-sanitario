@@ -77,7 +77,7 @@ function AppRoutes() {
       <Route path="/login" element={<Navigate to={basePath || "/"} replace />} />
       
       <Route element={<DashboardLayout />}>
-        <Route index element={<Navigate to={basePath + "/calendario"} replace />} />
+        <Route index element={<Navigate to={basePath + (role === "admin" ? "/dashboard" : "/calendario")} replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         
         {(role === "admin" || role === "encargado" || role === "general") && (
