@@ -9,6 +9,7 @@ import {
   PackagePlus,
   Shirt,
   LayoutDashboard,
+  Moon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -32,6 +33,7 @@ const allNavItems: NavItem[] = [
   { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList, allowedRoles: ["admin"] },
   { to: "/reservas-de-insumos", label: "Reservas para insumos", icon: PackagePlus, allowedRoles: ["admin", "encargado"] },
   { to: "/reservas-de-epps", label: "Reservas para EPPs", icon: Shirt, allowedRoles: ["admin", "encargado", "general"] },
+  { to: "/reportes-tareas-nocturnas", label: "Reporte de Tareas Nocturnas", icon: Moon, allowedRoles: ["encargado"] },
 ]
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {

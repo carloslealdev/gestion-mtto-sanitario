@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +25,7 @@ import {
   type WorkTeam,
 } from "@/helpers/rotation"
 import { productionLines } from "@/mock-data/productionLines"
+import { normalizeName } from "@/helpers/normalize"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
   setCurrentDate,
@@ -223,6 +225,7 @@ export default function CalendarioPage() {
 
   const canRegister = user?.role === "admin"
   const canDelete = user?.role === "admin"
+  const isAdmin = user?.role === "admin"
 
   const currentDate = new Date(currentDateStr)
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
@@ -243,6 +246,63 @@ export default function CalendarioPage() {
 
   const weekLabelStart = format(weekStart, "d MMM", { locale: es })
   const weekLabelEnd = format(weekEnd, "d MMM yyyy", { locale: es })
+
+  const todayKey = format(currentDate, "yyyy-MM-dd")
+  const todayMaintenances = maintenances[todayKey] || []
+
+  const loadTaskAssignments = (): { maintenanceId: string; machineId: string; team: string }[] => {
+    try {
+      const stored = localStorage.getItem("taskAssignmentsState")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.dateKey === todayKey) {
+          return parsed.assignments
+        }
+      }
+    } catch (e) {
+      console.error("Error loading task assignments:", e)
+    }
+    return []
+  }
+
+  const saveTaskAssignments = (assignments: { maintenanceId: string; machineId: string; team: string }[]) => {
+    try {
+      localStorage.setItem("taskAssignmentsState", JSON.stringify({
+        dateKey: todayKey,
+        assignments,
+      }))
+    } catch (e) {
+      console.error("Error saving task assignments:", e)
+    }
+  }
+
+  const [selectedMaintenanceId, setSelectedMaintenanceId] = useState<string>("")
+  const [selectedTeam, setSelectedTeam] = useState<string>("")
+  const [taskAssignments, setTaskAssignments] = useState<{ maintenanceId: string; machineId: string; team: string }[]>(() => loadTaskAssignments())
+
+  const availableTeams: { value: string; label: string }[] = [
+    { value: "TN", label: "Turno Normal" },
+    { value: "G1", label: "Grupo Rotativo Diurno (G1)" },
+    { value: "G2", label: "Grupo Rotativo Diurno (G2)" },
+    { value: "G3", label: "Grupo Rotativo Diurno (G3)" },
+  ]
+
+  const handleAddTaskAssignment = () => {
+    if (selectedMaintenanceId && selectedTeam) {
+      const [maintenanceId, machineId] = selectedMaintenanceId.split("-")
+      const newAssignments = [...taskAssignments, { maintenanceId, machineId, team: selectedTeam }]
+      setTaskAssignments(newAssignments)
+      saveTaskAssignments(newAssignments)
+      setSelectedMaintenanceId("")
+      setSelectedTeam("")
+    }
+  }
+
+  const handleRemoveTaskAssignment = (index: number) => {
+    const newAssignments = taskAssignments.filter((_, i) => i !== index)
+    setTaskAssignments(newAssignments)
+    saveTaskAssignments(newAssignments)
+  }
 
   return (
     <div className="space-y-6">
@@ -312,6 +372,116 @@ export default function CalendarioPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isAdmin && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Para la distribución de tareas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="border-b pb-4">
+            <h3 className="text-sm font-medium mb-3">Alcance del grupo nocturno</h3>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled>
+                Cargar manualmente
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                Cargar reporte
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-medium mb-3">Distribución de tareas diurnas</h3>
+            
+            {todayMaintenances.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay mantenimientos registrados para el día de hoy. Registra mantenimientos en el calendario arriba.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                  <div className="w-full sm:w-64">
+                    <label className="text-sm font-medium mb-1 block">Equipo/Mantenimiento</label>
+                    <select
+                      value={selectedMaintenanceId}
+                      onChange={(e) => setSelectedMaintenanceId(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    >
+                      <option value="">Seleccionar equipo</option>
+                      {todayMaintenances.flatMap((m) => {
+                        const line = productionLines.find((l) => l.name === m.lineName)
+                        return line?.machines.map((machine) => ({
+                          maintenanceId: m.id.toString(),
+                          machineId: machine.machineId,
+                          machineName: machine.name,
+                          lineName: m.lineName,
+                        })) || []
+                      }).map((eq) => (
+                        <option key={`${eq.maintenanceId}-${eq.machineId}`} value={`${eq.maintenanceId}-${eq.machineId}`}>
+                          {normalizeName(eq.machineName)} - {eq.lineName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-full sm:w-64">
+                    <label className="text-sm font-medium mb-1 block">Grupo de trabajo</label>
+                    <select
+                      value={selectedTeam}
+                      onChange={(e) => setSelectedTeam(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    >
+                      <option value="">Seleccionar grupo</option>
+                      {availableTeams.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleAddTaskAssignment}
+                      disabled={!selectedMaintenanceId || !selectedTeam}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar
+                    </Button>
+                  </div>
+                </div>
+
+                {taskAssignments.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tareas asignadas:</label>
+                    {taskAssignments.map((assignment, index) => {
+                      const maintenance = todayMaintenances.find((m) => m.id.toString() === assignment.maintenanceId)
+                      const line = productionLines.find((l) => l.name === maintenance?.lineName)
+                      const machine = line?.machines.find((m) => m.machineId === assignment.machineId)
+                      return (
+                        <div key={index} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
+                          <div className="flex-1">
+                            <span className="font-medium">{normalizeName(machine?.name || assignment.machineId)}</span>
+                            <span className="text-muted-foreground text-xs ml-2">
+                              - {maintenance?.lineName} - {availableTeams.find((t) => t.value === assignment.team)?.label}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveTaskAssignment(index)}
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      )}
     </div>
   )
 }

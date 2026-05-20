@@ -15,6 +15,7 @@ import InventariosPage from "@/pages/InventariosPage"
 import CalendarioPage from "@/pages/CalendarioPage"
 import ReservasPage from "@/pages/ReservasPage"
 import ReservasEPPsPage from "@/pages/ReservasEPPsPage"
+import ReportesTareasNocturnasPage from "@/pages/ReportesTareasNocturnasPage"
 import { useAppSelector } from "./store/hooks"
 
 function ThemeInitializer() {
@@ -93,6 +94,12 @@ function AppRoutes() {
         {(role === "admin" || role === "encargado") && (
           <>
             <Route path="reservas-de-insumos" element={<ReservasPage />} />
+          </>
+        )}
+
+        {role === "encargado" && (
+          <>
+            <Route path="reportes-tareas-nocturnas" element={<ReportesTareasNocturnasPage />} />
           </>
         )}
 
