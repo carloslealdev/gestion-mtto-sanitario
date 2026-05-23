@@ -97,7 +97,7 @@ function AppRoutes() {
           </>
         )}
 
-        {role === "encargado" && (
+        {(role === "admin" || role === "encargado") && (
           <>
             <Route path="reportes-tareas-nocturnas" element={<ReportesTareasNocturnasPage />} />
           </>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addNightlyTaskReport, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
+import { addNightlyTaskReport, clearNightlyTaskReports, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
 import { productionLines } from "@/mock-data/productionLines"
 import { normalizeName, normalizeSupplyName } from "@/helpers/normalize"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Plus, Trash2, Eye } from "lucide-react"
+import { seedMockReport } from "@/helpers/seedMockReport"
+import { Plus, Trash2, Eye, Download } from "lucide-react"
 
 type Team = "G1" | "G2" | "G3" | "TN"
 
@@ -96,6 +97,15 @@ export default function ReportesTareasNocturnasPage() {
 
   const handleRemoveEquipment = (index: number) => {
     setSelectedEquipment(selectedEquipment.filter((_, i) => i !== index))
+  }
+
+  const handleSeedMockReport = () => {
+    if (!userWorker) return
+    seedMockReport(dispatch, userWorker)
+  }
+
+  const handleClearMockData = () => {
+    dispatch(clearNightlyTaskReports())
   }
 
   const handleGenerateReport = () => {
@@ -202,12 +212,26 @@ export default function ReportesTareasNocturnasPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Generar nuevo reporte</CardTitle>
-              {!showForm && (
-                <Button onClick={() => setShowForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo reporte
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {!showForm && (
+                  <Button variant="outline" size="sm" onClick={handleSeedMockReport}>
+                    <Download className="h-4 w-4 mr-2" />
+                    CARGAR REPORTE MOCK
+                  </Button>
+                )}
+                {!showForm && (
+                  <Button variant="outline" size="sm" onClick={handleClearMockData}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    LIMPIAR DATA MOCK
+                  </Button>
+                )}
+                {!showForm && (
+                  <Button onClick={() => setShowForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo reporte
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           {showForm && (

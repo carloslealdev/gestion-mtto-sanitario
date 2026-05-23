@@ -33,7 +33,7 @@ const allNavItems: NavItem[] = [
   { to: "/mantenimientos", label: "Mantenimientos", icon: ClipboardList, allowedRoles: ["admin"] },
   { to: "/reservas-de-insumos", label: "Reservas para insumos", icon: PackagePlus, allowedRoles: ["admin", "encargado"] },
   { to: "/reservas-de-epps", label: "Reservas para EPPs", icon: Shirt, allowedRoles: ["admin", "encargado", "general"] },
-  { to: "/reportes-tareas-nocturnas", label: "Reporte de Tareas Nocturnas", icon: Moon, allowedRoles: ["encargado"] },
+  { to: "/reportes-tareas-nocturnas", label: "Reportes de Tareas Nocturnas", icon: Moon, allowedRoles: ["admin", "encargado"] },
 ]
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {

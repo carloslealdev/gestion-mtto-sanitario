@@ -42,6 +42,10 @@ const nightlyTasksSlice = createSlice({
   name: "nightlyTasks",
   initialState,
   reducers: {
+    clearNightlyTaskReports: (state) => {
+      state.reports = []
+      saveState(state)
+    },
     addNightlyTaskReport: (
       state,
       action: PayloadAction<{
@@ -50,6 +54,7 @@ const nightlyTasksSlice = createSlice({
         responsibleName: string
         responsibleCedula: string
         equipment: NightlyTaskEquipment[]
+        createdAt?: string
       }>
     ) => {
       const newReport: NightlyTaskReport = {
@@ -58,7 +63,7 @@ const nightlyTasksSlice = createSlice({
         team: action.payload.team,
         responsibleName: action.payload.responsibleName,
         responsibleCedula: action.payload.responsibleCedula,
-        createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+        createdAt: action.payload.createdAt || format(new Date(), "yyyy-MM-dd HH:mm"),
         equipment: action.payload.equipment,
       }
       state.reports.unshift(newReport)
@@ -75,5 +80,5 @@ function saveState(state: NightlyTasksState) {
   }
 }
 
-export const { addNightlyTaskReport } = nightlyTasksSlice.actions
+export const { addNightlyTaskReport, clearNightlyTaskReports } = nightlyTasksSlice.actions
 export default nightlyTasksSlice.reducer

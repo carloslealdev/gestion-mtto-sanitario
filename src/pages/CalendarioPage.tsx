@@ -15,6 +15,7 @@ import {
   format,
   addWeeks,
   subWeeks,
+  subDays,
   isToday,
 } from "date-fns"
 import { es } from "date-fns/locale"
@@ -33,6 +34,7 @@ import {
   removeMaintenance,
   type MaintenanceEntry,
 } from "@/store/slices/calendarSlice"
+import type { NightlyTaskReport } from "@/store/slices/nightlyTasksSlice"
 import {
   ChevronLeft,
   ChevronRight,
@@ -280,16 +282,27 @@ export default function CalendarioPage() {
   const [selectedTeam, setSelectedTeam] = useState<string>("")
   const [taskAssignments, setTaskAssignments] = useState<{ maintenanceId: string; machineId: string; team: string }[]>(() => loadTaskAssignments())
 
+  const allWorkers = useAppSelector((state) => state.workers.workers)
+
+  const getEncargadoName = (team: WorkTeam): string | null => {
+    const encargado = allWorkers.find(
+      (w) => w.workTeam === team && w.role === "trabajador-encargado"
+    )
+    return encargado ? `${encargado.firstName} ${encargado.lastName}` : null
+  }
+
   const availableTeams: { value: string; label: string }[] = [
-    { value: "TN", label: "Turno Normal" },
-    { value: "G1", label: "Grupo Rotativo Diurno (G1)" },
-    { value: "G2", label: "Grupo Rotativo Diurno (G2)" },
-    { value: "G3", label: "Grupo Rotativo Diurno (G3)" },
+    { value: "TN", label: `${teamLabels.TN} - ${getEncargadoName("TN")}` },
+    { value: "G1", label: `${teamLabels.G1} - ${getEncargadoName("G1")}` },
+    { value: "G2", label: `${teamLabels.G2} - ${getEncargadoName("G2")}` },
+    { value: "G3", label: `${teamLabels.G3} - ${getEncargadoName("G3")}` },
   ]
 
   const handleAddTaskAssignment = () => {
     if (selectedMaintenanceId && selectedTeam) {
-      const [maintenanceId, machineId] = selectedMaintenanceId.split("-")
+      const separatorIndex = selectedMaintenanceId.indexOf("-")
+      const maintenanceId = selectedMaintenanceId.substring(0, separatorIndex)
+      const machineId = selectedMaintenanceId.substring(separatorIndex + 1)
       const newAssignments = [...taskAssignments, { maintenanceId, machineId, team: selectedTeam }]
       setTaskAssignments(newAssignments)
       saveTaskAssignments(newAssignments)
@@ -302,6 +315,71 @@ export default function CalendarioPage() {
     const newAssignments = taskAssignments.filter((_, i) => i !== index)
     setTaskAssignments(newAssignments)
     saveTaskAssignments(newAssignments)
+  }
+
+  const reports = useAppSelector((state) => state.nightlyTasks.reports)
+
+  const yesterday = subDays(currentDate, 1)
+  const yesterdayKey = format(yesterday, "yyyy-MM-dd")
+
+  const previousDayReports = reports.filter((rep) =>
+    rep.createdAt.startsWith(yesterdayKey)
+  )
+
+  interface NightlyScopeItem {
+    lineId: number
+    lineName: string
+    machineId: string
+    machineName: string
+    team: WorkTeam
+  }
+
+  const loadNightlyScope = (): NightlyScopeItem[] => {
+    try {
+      const stored = localStorage.getItem("nightlyScopeState")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.dateKey === todayKey) {
+          return parsed.items
+        }
+      }
+    } catch (e) {
+      console.error("Error loading nightly scope:", e)
+    }
+    return []
+  }
+
+  const saveNightlyScope = (items: NightlyScopeItem[]) => {
+    try {
+      localStorage.setItem("nightlyScopeState", JSON.stringify({
+        dateKey: todayKey,
+        items,
+      }))
+    } catch (e) {
+      console.error("Error saving nightly scope:", e)
+    }
+  }
+
+  const [nightlyScopeItems, setNightlyScopeItems] = useState<NightlyScopeItem[]>(() => loadNightlyScope())
+  const [showReportModal, setShowReportModal] = useState(false)
+
+  const handleLoadReport = (report: NightlyTaskReport) => {
+    const items: NightlyScopeItem[] = report.equipment.map((eq) => ({
+      lineId: eq.lineId,
+      lineName: eq.lineName,
+      machineId: eq.machineId,
+      machineName: eq.machineName,
+      team: report.team as WorkTeam,
+    }))
+    setNightlyScopeItems(items)
+    saveNightlyScope(items)
+    setShowReportModal(false)
+  }
+
+  const handleRemoveNightlyScope = (index: number) => {
+    const newItems = nightlyScopeItems.filter((_, i) => i !== index)
+    setNightlyScopeItems(newItems)
+    saveNightlyScope(newItems)
   }
 
   return (
@@ -385,10 +463,28 @@ export default function CalendarioPage() {
               <Button variant="outline" size="sm" disabled>
                 Cargar manualmente
               </Button>
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" onClick={() => setShowReportModal(true)}>
                 Cargar reporte
               </Button>
             </div>
+            {nightlyScopeItems.length > 0 && (
+              <div className="space-y-2 mt-3">
+                <label className="text-sm font-medium">Equipos reportados por el grupo nocturno:</label>
+                {nightlyScopeItems.map((item, index) => (
+                  <div key={index} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
+                    <div className="flex-1">
+                      <span className="font-medium">{normalizeName(item.machineName)}</span>
+                      <span className="text-muted-foreground text-xs ml-2">
+                        - {item.lineName} - {teamLabels[item.team]}
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveNightlyScope(index)}>
+                      <X className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -461,7 +557,7 @@ export default function CalendarioPage() {
                           <div className="flex-1">
                             <span className="font-medium">{normalizeName(machine?.name || assignment.machineId)}</span>
                             <span className="text-muted-foreground text-xs ml-2">
-                              - {maintenance?.lineName} - {availableTeams.find((t) => t.value === assignment.team)?.label}
+                              - {maintenance?.lineName} - {teamLabels[assignment.team as WorkTeam]}
                             </span>
                           </div>
                           <Button
@@ -482,6 +578,47 @@ export default function CalendarioPage() {
         </CardContent>
       </Card>
       )}
+
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="sm:max-w-lg max-w-[calc(100%-2rem)] max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Reportes del día anterior ({format(yesterday, "d MMM yyyy", { locale: es })})</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-3 flex-1">
+            {previousDayReports.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay reportes registrados para el día anterior.
+              </p>
+            ) : (
+              previousDayReports.map((rep) => (
+                <div key={rep.id} className="p-3 border rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs text-white px-2 py-1 rounded ${
+                          rep.reportType === "mantenimiento_sanitario" ? "bg-blue-500" : "bg-purple-500"
+                        }`}>
+                          {rep.reportType === "mantenimiento_sanitario" ? "Mantenimiento sanitario" : "Otras tareas"}
+                        </span>
+                        <span className="text-sm font-medium">{teamLabels[rep.team as WorkTeam]}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {rep.responsibleName} - {rep.createdAt}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {rep.equipment.length} equipo(s)
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => handleLoadReport(rep)}>
+                      Cargar
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
