@@ -174,8 +174,8 @@ export default function ReservasPage() {
       return acc
     }, [] as RequestItem[])
 
-    if (userWorkTeam) {
-      dispatch(addRequest({ team: userWorkTeam, items: uniqueItems }))
+    if (userWorkTeam && userWorkTeam !== "Sin asignar") {
+      dispatch(addRequest({ team: userWorkTeam as Team, items: uniqueItems }))
     }
     setRequestItems([])
     setShowRequestForm(false)
@@ -273,7 +273,7 @@ export default function ReservasPage() {
   const availableItems = itemKeys.filter((key) => !items.some((i) => i.item === key))
   const availableRequestItems = itemKeys.filter((key) => !requestItems.some((i) => i.item === key))
 
-  const pageTitle = userWorkTeam
+  const pageTitle = userWorkTeam && userWorkTeam !== "Sin asignar"
     ? `Reservas de insumos - ${workTeamLabels[userWorkTeam]}`
     : "Reservas de insumos"
 

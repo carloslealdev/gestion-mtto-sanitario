@@ -83,16 +83,16 @@ function InventoryItem({
 }
 
 export default function InventariosPage() {
-  const teams = ["G1", "G2", "G3", "TN"] as const
+  const validTeams = ["G1", "G2", "G3", "TN"] as const
   const workers = useAppSelector((state) => state.workers.workers)
   const user = useAppSelector((state) => state.auth.user)
   const inventory = useAppSelector((state) => state.inventory.inventory)
 
   const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
 
-  const teamsToShow = (user?.role === "encargado" || user?.role === "general") && userWorkTeam
-    ? [userWorkTeam]
-    : teams
+  const teamsToShow = (user?.role === "encargado" || user?.role === "general") && userWorkTeam && userWorkTeam !== "Sin asignar"
+    ? [userWorkTeam as typeof validTeams[number]]
+    : [...validTeams]
 
   return (
     <div className="space-y-6">

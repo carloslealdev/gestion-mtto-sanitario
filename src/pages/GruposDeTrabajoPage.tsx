@@ -27,6 +27,8 @@ export default function GruposDeTrabajoPage() {
     return workers.filter((w) => w.workTeam === team)
   }
 
+  const unassignedWorkers = workers.filter((w) => w.workTeam === "Sin asignar")
+
   return (
     <div className="space-y-6">
       <div>
@@ -73,6 +75,40 @@ export default function GruposDeTrabajoPage() {
           )
         })}
       </div>
+
+      {user?.role === "admin" && unassignedWorkers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Trabajadores sin asignar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium">Nombre</th>
+                    <th className="text-left py-3 px-4 font-medium">Apellido</th>
+                    <th className="text-left py-3 px-4 font-medium">Cédula</th>
+                    <th className="text-left py-3 px-4 font-medium">Rol</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unassignedWorkers.map((w) => (
+                    <tr key={w.cedula} className="border-b hover:bg-muted/50">
+                      <td className="py-3 px-4">{w.firstName}</td>
+                      <td className="py-3 px-4">{w.lastName}</td>
+                      <td className="py-3 px-4">{w.cedula}</td>
+                      <td className="py-3 px-4">
+                        {w.role === "trabajador-encargado" ? "Encargado" : "General"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

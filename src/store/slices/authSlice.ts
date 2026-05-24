@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { users } from "@/mock-data/users"
-import type { RootState } from "../index"
 
 export type AuthUserRole = "admin" | "encargado" | "general"
 
@@ -34,10 +33,52 @@ function mapWorkerRoleToAuthRole(workerRole: string): AuthUserRole {
   return workerRole === "trabajador-encargado" ? "encargado" : "general"
 }
 
+function loadWorkerCredentials(): { cedula: string; password: string }[] {
+  try {
+    const stored = localStorage.getItem("workerCredentialsState")
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.credentials || []
+    }
+  } catch (e) {
+    console.error("Error loading worker credentials:", e)
+  }
+  return []
+}
+
+function loadWorkers(): { firstName: string; lastName: string; cedula: string; role: string }[] {
+  try {
+    const stored = localStorage.getItem("workersState")
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.workers || []
+    }
+  } catch (e) {
+    console.error("Error loading workers:", e)
+  }
+  return []
+}
+
 export const loginAsync = createAsyncThunk(
   "auth/loginAsync",
-  async ({ username, password }: { username: string; password: string }, { getState }) => {
-    const foundUser = users.find((u) => u.username === username && u.password === password)
+  async ({ username, password }: { username: string; password: string }) => {
+    let foundUser = users.find((u) => u.username === username && u.password === password)
+
+    if (!foundUser) {
+      const credentials = loadWorkerCredentials()
+      const cred = credentials.find((c) => c.cedula === username && c.password === password)
+      if (cred) {
+        const allWorkers = loadWorkers()
+        const worker = allWorkers.find((w) => w.cedula.replace("V-", "") === username)
+        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : username
+        foundUser = {
+          username: cred.cedula,
+          password: cred.password,
+          name: workerName,
+          role: worker ? mapWorkerRoleToAuthRole(worker.role) : "general",
+        }
+      }
+    }
 
     if (!foundUser) {
       throw new Error("Usuario o contraseña incorrectos")
@@ -46,8 +87,8 @@ export const loginAsync = createAsyncThunk(
     let role: AuthUserRole = foundUser.role as AuthUserRole
 
     if (foundUser.role !== "admin") {
-      const state = getState() as RootState
-      const worker = state.workers.workers.find((w) => w.cedula.replace("V-", "") === username)
+      const allWorkers = loadWorkers()
+      const worker = allWorkers.find((w) => w.cedula.replace("V-", "") === username)
       if (worker) {
         role = mapWorkerRoleToAuthRole(worker.role)
       }

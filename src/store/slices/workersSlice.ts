@@ -1,8 +1,9 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import { workers as initialWorkers } from "@/mock-data/workers"
+import type { EPPs } from "@/mock-data/workers"
 
 export type WorkerRole = "trabajador-encargado" | "trabajador-general"
-export type WorkTeam = "G1" | "G2" | "G3" | "TN"
+export type WorkTeam = "G1" | "G2" | "G3" | "TN" | "Sin asignar"
 
 export interface WorkerUpdate {
   cedula: string
@@ -11,14 +12,25 @@ export interface WorkerUpdate {
 }
 
 export interface EPPUpdateEntry {
-  epp: "casco" | "lentes" | "botas" | "auditivo" | "fullFace"
+  epp: keyof EPPs
   lastRenewal: string
   nextRenewal: string
+  notOwned?: boolean
 }
 
 export interface WorkerEPPUpdate {
   cedula: string
   epps: EPPUpdateEntry[]
+}
+
+export interface AddWorkerPayload {
+  firstName: string
+  lastName: string
+  cedula: string
+  fechaIngreso: string
+  workTeam: WorkTeam
+  role: WorkerRole
+  epps: EPPs
 }
 
 interface WorkersState {
@@ -43,6 +55,10 @@ const workersSlice = createSlice({
   name: "workers",
   initialState,
   reducers: {
+    addWorker: (state, action: PayloadAction<AddWorkerPayload>) => {
+      state.workers.push(action.payload)
+      saveState(state)
+    },
     updateWorker: (state, action: PayloadAction<WorkerUpdate>) => {
       const { cedula, role, workTeam } = action.payload
       const worker = state.workers.find((w) => w.cedula === cedula)
@@ -60,10 +76,30 @@ const workersSlice = createSlice({
           if (worker.epps[eppUpdate.epp]) {
             worker.epps[eppUpdate.epp].lastRenewal = eppUpdate.lastRenewal
             worker.epps[eppUpdate.epp].nextRenewal = eppUpdate.nextRenewal
+            if (eppUpdate.notOwned !== undefined) {
+              worker.epps[eppUpdate.epp].notOwned = eppUpdate.notOwned
+            }
           }
         })
         saveState(state)
       }
+    },
+    updateFullWorker: (state, action: PayloadAction<{ cedula: string; data: Partial<AddWorkerPayload> }>) => {
+      const { cedula, data } = action.payload
+      const worker = state.workers.find((w) => w.cedula === cedula)
+      if (worker) {
+        if (data.firstName !== undefined) worker.firstName = data.firstName
+        if (data.lastName !== undefined) worker.lastName = data.lastName
+        if (data.fechaIngreso !== undefined) worker.fechaIngreso = data.fechaIngreso
+        if (data.workTeam !== undefined) worker.workTeam = data.workTeam as WorkTeam
+        if (data.role !== undefined) worker.role = data.role as WorkerRole
+        if (data.epps !== undefined) worker.epps = data.epps
+        saveState(state)
+      }
+    },
+    deleteWorker: (state, action: PayloadAction<string>) => {
+      state.workers = state.workers.filter((w) => w.cedula !== action.payload)
+      saveState(state)
     },
     resetWorkers: (state) => {
       state.workers = initialWorkers
@@ -80,5 +116,5 @@ function saveState(state: WorkersState) {
   }
 }
 
-export const { updateWorker, updateWorkerEPP, resetWorkers } = workersSlice.actions
+export const { addWorker, updateWorker, updateWorkerEPP, updateFullWorker, deleteWorker, resetWorkers } = workersSlice.actions
 export default workersSlice.reducer

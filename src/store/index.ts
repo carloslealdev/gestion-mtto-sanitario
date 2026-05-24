@@ -11,6 +11,10 @@ import eppReservationsReducer from "./slices/eppReservationsSlice"
 import eppRequestsReducer from "./slices/eppRequestsSlice"
 import inventoryReducer from "./slices/inventorySlice"
 import nightlyTasksReducer from "./slices/nightlyTasksSlice"
+import suppliesReducer from "./slices/suppliesSlice"
+import eppTypesReducer from "./slices/eppTypesSlice"
+import productionLinesReducer from "./slices/productionLinesSlice"
+import workerCredentialsReducer from "./slices/workerCredentialsSlice"
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +30,10 @@ export const store = configureStore({
     eppRequests: eppRequestsReducer,
     inventory: inventoryReducer,
     nightlyTasks: nightlyTasksReducer,
+    supplies: suppliesReducer,
+    eppTypes: eppTypesReducer,
+    productionLines: productionLinesReducer,
+    workerCredentials: workerCredentialsReducer,
   },
 })
 

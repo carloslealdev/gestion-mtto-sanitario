@@ -10,6 +10,7 @@ import {
   Shirt,
   LayoutDashboard,
   Moon,
+  FilePlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -26,6 +27,7 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allowedRoles: ["admin"] },
+  { to: "/nuevos-registros", label: "Nuevos Registros", icon: FilePlus, allowedRoles: ["admin"] },
   { to: "/calendario", label: "Calendario", icon: Calendar, allowedRoles: ["admin", "encargado", "general"] },
   { to: "/grupos-de-trabajo", label: "Grupos de Trabajo", icon: Users, allowedRoles: ["admin", "encargado", "general"] },
   { to: "/inventarios-de-grupos", label: "Inventarios de Grupos", icon: Archive, allowedRoles: ["admin", "encargado", "general"] },

@@ -1,6 +1,7 @@
 export interface EPPDates {
   lastRenewal: string;
   nextRenewal: string;
+  notOwned?: boolean;
 }
 
 export interface EPPs {
@@ -16,7 +17,7 @@ export interface Worker {
   lastName: string;
   cedula: string;
   fechaIngreso: string;
-  workTeam: 'G1' | 'G2' | 'G3' | 'TN';
+  workTeam: 'G1' | 'G2' | 'G3' | 'TN' | 'Sin asignar';
   role: 'trabajador-encargado' | 'trabajador-general';
   epps: EPPs;
 }

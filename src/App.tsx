@@ -16,6 +16,7 @@ import CalendarioPage from "@/pages/CalendarioPage"
 import ReservasPage from "@/pages/ReservasPage"
 import ReservasEPPsPage from "@/pages/ReservasEPPsPage"
 import ReportesTareasNocturnasPage from "@/pages/ReportesTareasNocturnasPage"
+import NuevosRegistrosPage from "@/pages/NuevosRegistrosPage"
 import { useAppSelector } from "./store/hooks"
 
 function ThemeInitializer() {
@@ -111,6 +112,7 @@ function AppRoutes() {
 
         {role === "admin" && (
           <>
+            <Route path="nuevos-registros" element={<NuevosRegistrosPage />} />
             <Route path="equipos" element={<EquiposPage />} />
             <Route path="mantenimientos" element={<MantenimientosPage />} />
           </>

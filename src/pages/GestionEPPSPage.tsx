@@ -184,7 +184,7 @@ export default function GestionEPPSPage() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {(
-                    Object.keys(worker.epps) as Array<keyof typeof worker.epps>
+                    (Object.keys(worker.epps) as Array<keyof typeof worker.epps>).filter((k) => !worker.epps[k]?.notOwned)
                   ).map((eppKey) => {
                     const epp = worker.epps[eppKey];
                     const Icon = eppIcons[eppKey];
