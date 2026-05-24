@@ -35,6 +35,10 @@ export const store = configureStore({
     productionLines: productionLinesReducer,
     workerCredentials: workerCredentialsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 })
 
 export type RootState = ReturnType<typeof store.getState>

@@ -1,5 +1,5 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
-import { productionLines as defaultLines } from "@/mock-data/productionLines"
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import * as productionLinesService from "@/services/productionLinesService"
 
 export interface SupplyRequired {
   supplyId: string
@@ -15,7 +15,7 @@ export interface Machine {
 }
 
 export interface ProductionLine {
-  id: string
+  id: number
   name: string
   lineId: string
   machines: Machine[]
@@ -23,67 +23,92 @@ export interface ProductionLine {
 
 interface ProductionLinesState {
   lines: ProductionLine[]
+  loading: boolean
+  error: string | null
 }
 
-const convertDefaultLines = (): ProductionLine[] => {
-  return defaultLines.map((line) => ({
-    id: String(line.id),
-    name: line.name,
-    lineId: `LP-${String(line.id).padStart(3, "0")}`,
-    machines: line.machines.map((m) => ({
-      machineId: m.machineId,
-      name: m.name,
-      supplies_required: m.supplies_required.map((s) => ({
-        supplyId: s.supply,
-        supplyName: s.supply,
-        quantity: s.quantity,
-        unit: s.unit,
-      })),
-    })),
+const initialState: ProductionLinesState = {
+  lines: [],
+  loading: false,
+  error: null,
+}
+
+export const fetchProductionLines = createAsyncThunk("productionLines/fetch", async () => {
+  const docs = await productionLinesService.getAllProductionLines()
+  return docs.map((doc) => ({
+    ...doc,
+    id: Number(doc.id),
   }))
-}
+})
 
-const loadState = (): ProductionLinesState => {
-  try {
-    const stored = localStorage.getItem("productionLinesState")
-    if (stored) return JSON.parse(stored)
-  } catch (e) {
-    console.error("Error loading production lines state:", e)
+export const addProductionLineAsync = createAsyncThunk(
+  "productionLines/addProductionLineAsync",
+  async (payload: ProductionLine) => {
+    await productionLinesService.createProductionLine(String(payload.id), payload)
+    return payload
   }
-  return { lines: convertDefaultLines() }
-}
+)
 
-const initialState: ProductionLinesState = loadState()
+export const updateProductionLineAsync = createAsyncThunk(
+  "productionLines/updateProductionLineAsync",
+  async (payload: ProductionLine) => {
+    await productionLinesService.updateProductionLine(String(payload.id), payload)
+    return payload
+  }
+)
+
+export const deleteProductionLineAsync = createAsyncThunk(
+  "productionLines/deleteProductionLineAsync",
+  async (id: number) => {
+    await productionLinesService.deleteProductionLine(String(id))
+    return id
+  }
+)
 
 const productionLinesSlice = createSlice({
   name: "productionLines",
   initialState,
   reducers: {
-    addProductionLine: (state, action: PayloadAction<ProductionLine>) => {
+    addProductionLine(state, action: PayloadAction<ProductionLine>) {
       state.lines.push(action.payload)
-      saveState(state)
     },
-    updateProductionLine: (state, action: PayloadAction<ProductionLine>) => {
+    updateProductionLine(state, action: PayloadAction<ProductionLine>) {
       const index = state.lines.findIndex((l) => l.id === action.payload.id)
       if (index !== -1) {
         state.lines[index] = action.payload
-        saveState(state)
       }
     },
-    deleteProductionLine: (state, action: PayloadAction<string>) => {
+    deleteProductionLine(state, action: PayloadAction<number>) {
       state.lines = state.lines.filter((l) => l.id !== action.payload)
-      saveState(state)
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchProductionLines.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchProductionLines.fulfilled, (state, action) => {
+        state.loading = false
+        state.lines = action.payload
+      })
+      .addCase(fetchProductionLines.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message || "Error al cargar líneas de producción"
+      })
+      .addCase(addProductionLineAsync.fulfilled, (state, action) => {
+        state.lines.push(action.payload)
+      })
+      .addCase(updateProductionLineAsync.fulfilled, (state, action) => {
+        const index = state.lines.findIndex((l) => l.id === action.payload.id)
+        if (index !== -1) state.lines[index] = action.payload
+      })
+      .addCase(deleteProductionLineAsync.fulfilled, (state, action) => {
+        state.lines = state.lines.filter((l) => l.id !== action.payload)
+      })
   },
 })
 
-function saveState(state: ProductionLinesState) {
-  try {
-    localStorage.setItem("productionLinesState", JSON.stringify(state))
-  } catch (e) {
-    console.error("Error saving production lines state:", e)
-  }
-}
-
-export const { addProductionLine, updateProductionLine, deleteProductionLine } = productionLinesSlice.actions
+export const { addProductionLine, updateProductionLine, deleteProductionLine } =
+  productionLinesSlice.actions
 export default productionLinesSlice.reducer

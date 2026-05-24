@@ -1,7 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useAppSelector } from "@/store/hooks"
-import { productionLines } from "@/mock-data/productionLines"
-import { inventory } from "@/mock-data/inventory"
 import { getDaySchedule } from "@/helpers/rotation"
 import { normalizeName } from "@/helpers/normalize"
 import { format } from "date-fns"
@@ -10,6 +8,8 @@ import { Users, Factory, Wrench, AlertTriangle, ShieldOff, PackageX } from "luci
 export default function DashboardPage() {
   const workers = useAppSelector((state) => state.workers.workers)
   const maintenances = useAppSelector((state) => state.calendar.maintenances)
+  const productionLines = useAppSelector((state) => state.productionLines.lines)
+  const inventory = useAppSelector((state) => state.inventory.inventory)
 
   const totalWorkers = workers.length
 
@@ -52,7 +52,7 @@ export default function DashboardPage() {
     })
   }).length
 
-  const groupsWithZeroInventory = (Object.keys(inventory) as Array<keyof typeof inventory>).filter(
+  const groupsWithZeroInventory = Object.keys(inventory).filter(
     (group) => {
       return Object.values(inventory[group]).some((item) => item.quantity === 0)
     }
@@ -160,7 +160,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="space-y-2">
                 {groupsWithZeroInventory.map((group) => {
-                  const zeroItems = Object.entries(inventory[group as keyof typeof inventory])
+                  const zeroItems = Object.entries(inventory[group])
                     .filter(([, item]) => item.quantity === 0)
                     .map(([key]) => normalizeName(key))
                   return (

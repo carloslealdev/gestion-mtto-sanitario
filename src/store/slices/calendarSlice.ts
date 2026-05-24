@@ -1,4 +1,5 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import * as calendarService from "@/services/calendarService"
 
 export interface MaintenanceEntry {
   id: number
@@ -9,48 +10,47 @@ export interface MaintenanceEntry {
 interface CalendarState {
   currentDate: string
   maintenances: Record<string, MaintenanceEntry[]>
+  loading: boolean
+  error: string | null
 }
 
-const loadState = (): CalendarState => {
-  try {
-    const stored = localStorage.getItem("calendarState")
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (e) {
-    console.error("Error loading calendar state:", e)
-  }
-  return {
-    currentDate: new Date().toISOString(),
-    maintenances: {},
-  }
+const initialState: CalendarState = {
+  currentDate: new Date().toISOString(),
+  maintenances: {},
+  loading: false,
+  error: null,
 }
 
-const initialState: CalendarState = loadState()
+export const fetchCalendarEntries = createAsyncThunk("calendar/fetch", async () => {
+  const entries = await calendarService.getAllCalendarEntries()
+  const maintenances: Record<string, MaintenanceEntry[]> = {}
+  for (const entry of entries) {
+    maintenances[entry.dateKey] = entry.maintenances
+  }
+  return maintenances
+})
 
 const calendarSlice = createSlice({
   name: "calendar",
   initialState,
   reducers: {
-    setCurrentDate: (state, action: PayloadAction<string>) => {
+    setCurrentDate(state, action: PayloadAction<string>) {
       state.currentDate = action.payload
-      saveState(state)
     },
-    addMaintenance: (
+    addMaintenance(
       state,
       action: PayloadAction<{ dateKey: string; maintenance: MaintenanceEntry }>
-    ) => {
+    ) {
       const { dateKey, maintenance } = action.payload
       if (!state.maintenances[dateKey]) {
         state.maintenances[dateKey] = []
       }
       state.maintenances[dateKey].push(maintenance)
-      saveState(state)
     },
-    removeMaintenance: (
+    removeMaintenance(
       state,
       action: PayloadAction<{ dateKey: string; maintenanceId: number }>
-    ) => {
+    ) {
       const { dateKey, maintenanceId } = action.payload
       if (state.maintenances[dateKey]) {
         state.maintenances[dateKey] = state.maintenances[dateKey].filter(
@@ -60,19 +60,24 @@ const calendarSlice = createSlice({
           delete state.maintenances[dateKey]
         }
       }
-      saveState(state)
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchCalendarEntries.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchCalendarEntries.fulfilled, (state, action) => {
+        state.loading = false
+        state.maintenances = action.payload
+      })
+      .addCase(fetchCalendarEntries.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message || "Error al cargar calendario"
+      })
   },
 })
 
-function saveState(state: CalendarState) {
-  try {
-    localStorage.setItem("calendarState", JSON.stringify(state))
-  } catch (e) {
-    console.error("Error saving calendar state:", e)
-  }
-}
-
-export const { setCurrentDate, addMaintenance, removeMaintenance } =
-  calendarSlice.actions
+export const { setCurrentDate, addMaintenance, removeMaintenance } = calendarSlice.actions
 export default calendarSlice.reducer

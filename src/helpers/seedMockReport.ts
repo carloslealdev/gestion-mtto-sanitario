@@ -1,11 +1,12 @@
 import { format, subDays } from "date-fns"
 import type { AppDispatch } from "@/store"
 import { addNightlyTaskReport } from "@/store/slices/nightlyTasksSlice"
-import { productionLines } from "@/mock-data/productionLines"
+import type { ProductionLine } from "@/store/slices/productionLinesSlice"
 
 export function seedMockReport(
   dispatch: AppDispatch,
-  worker: { firstName: string; lastName: string; cedula: string; workTeam: string }
+  worker: { firstName: string; lastName: string; cedula: string; workTeam: string },
+  productionLines: ProductionLine[]
 ) {
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd") + " 22:00"
 
@@ -18,7 +19,7 @@ export function seedMockReport(
     const sinfines = molienda1.machines.find((m) => m.machineId === "M-MOL-001")
     if (sinfines) {
       equipment.push({
-        lineId: molienda1.id,
+        lineId: Number(molienda1.id),
         lineName: molienda1.name,
         machineId: sinfines.machineId,
         machineName: sinfines.name,
@@ -27,7 +28,7 @@ export function seedMockReport(
     const molinos = molienda1.machines.find((m) => m.machineId === "M-MOL-003")
     if (molinos) {
       equipment.push({
-        lineId: molienda1.id,
+        lineId: Number(molienda1.id),
         lineName: molienda1.name,
         machineId: molinos.machineId,
         machineName: molinos.name,
@@ -39,7 +40,7 @@ export function seedMockReport(
     const rodillos = laminacion1.machines.find((m) => m.machineId === "M-LAM-002")
     if (rodillos) {
       equipment.push({
-        lineId: laminacion1.id,
+        lineId: Number(laminacion1.id),
         lineName: laminacion1.name,
         machineId: rodillos.machineId,
         machineName: rodillos.name,

@@ -1,16 +1,20 @@
 # Gestion MTTO Sanitario
 
-Sistema de gestion de mantenimiento sanitario para equipos, trabajadores y turnos de trabajo.
+Sistema de gestión de mantenimiento sanitario para equipos, trabajadores, EPPs y turnos de trabajo.
 
-## Tecnologias
+## Tecnologías
 
 - **React 19** + **TypeScript** + **Vite**
 - **Tailwind CSS v3** para estilos
 - **shadcn/ui** para componentes base
-- **React Router** para navegacion
+- **React Router** para navegación
 - **date-fns** para manejo de fechas
 - **Lucide React** para iconos
-- **Redux Toolkit** para estado global con persistencia
+- **Redux Toolkit** para estado global
+- **Firebase Auth** para autenticación
+- **Firebase Firestore** para persistencia de datos
+- **bcryptjs** para hash de contraseñas
+- **sweetalert2** para notificaciones y diálogos
 
 ## Estructura del Proyecto
 
@@ -21,184 +25,170 @@ gestion-mtto-sanitario/
 │   │   ├── layout/
 │   │   │   ├── DashboardLayout.tsx    # Layout principal con sidebar + header
 │   │   │   ├── Header.tsx              # Header con notificaciones, theme toggle y usuario
-│   │   │   └── Sidebar.tsx             # Navegacion lateral (responsive)
+│   │   │   └── Sidebar.tsx             # Navegación lateral (responsive por rol)
 │   │   ├── ui/                         # Componentes shadcn/ui
-│   │   ├── Login.tsx                   # Formulario de inicio de sesion
-│   │   └── ProtectedRoute.tsx          # Proteccion de rutas por rol
-│   ├── store/
-│   │   ├── index.ts                    # Configuracion del store
-│   │   ├── hooks.ts                     # useAppDispatch, useAppSelector
-│   │   └── slices/
-│   │       ├── authSlice.ts            # Autenticacion y roles de usuario
-│   │       ├── calendarSlice.ts         # Mantenimientos del calendario
-│   │       ├── eppSlice.ts              # Filtros de busqueda EPPs
-│   │       ├── eppReservationsSlice.ts  # Reservas de EPPs
-│   │       ├── inventorySlice.ts        # Inventario de insumos (estado global)
-│   │       ├── mantenimientosSlice.ts   # Filtros de busqueda lineas
-│   │       ├── reservationsSlice.ts     # Reservas de insumos
-│   │       ├── themeSlice.ts             # Tema claro/oscuro
-│   │       └── workersSlice.ts           # Datos de trabajadores (rol/grupo/EPPs)
+│   │   ├── Login.tsx                   # Formulario de inicio de sesión (Firebase Auth)
+│   │   └── ProtectedRoute.tsx          # Protección de rutas por rol
 │   ├── helpers/
-│   │   ├── rotation.ts                  # Logica de rotacion de grupos
-│   │   └── normalize.ts                 # Normalizacion de nombres
+│   │   ├── normalize.ts                # normalizeName, generateIdFromName, eppNameToKey
+│   │   ├── rotation.ts                 # Lógica de rotación de grupos
+│   │   └── seedMockReport.ts           # Generación de reportes mock
 │   ├── hooks/
-│   │   └── useAppTheme.tsx              # Hook para inicializar tema
+│   │   └── useAppTheme.tsx             # Hook para inicializar tema
 │   ├── lib/
-│   │   └── utils.ts                     # Funcion cn() para clases
-│   ├── mock-data/
-│   │   ├── workers.ts                   # Datos de trabajadores con EPPs
-│   │   ├── inventory.ts                 # Inventario de insumos por grupo
-│   │   ├── productionLines.ts          # Lineas de produccion y maquinas
-│   │   └── users.ts                     # Usuarios para autenticacion
+│   │   ├── crypto.ts                   # hashPassword / verifyPassword (bcryptjs)
+│   │   ├── firebase.ts                 # Inicialización Firebase (auth + firestore)
+│   │   ├── firestore.ts                # CRUD genérico para Firestore
+│   │   └── utils.ts                    # Función cn() para clases
+│   ├── services/                       # Capa de acceso a Firestore
+│   │   ├── authService.ts              # Firebase Auth + Firestore users CRUD
+│   │   ├── calendarService.ts
+│   │   ├── eppRequestsService.ts
+│   │   ├── eppReservationsService.ts
+│   │   ├── eppTypesService.ts
+│   │   ├── inventoryService.ts
+│   │   ├── nightlyTasksService.ts
+│   │   ├── productionLinesService.ts
+│   │   ├── requestsService.ts
+│   │   ├── reservationsService.ts
+│   │   ├── suppliesService.ts
+│   │   └── workersService.ts
+│   ├── store/
+│   │   ├── index.ts                    # Configuración del store
+│   │   ├── hooks.ts                    # useAppDispatch, useAppSelector
+│   │   └── slices/
+│   │       ├── authSlice.ts            # Firebase Auth + initializing state
+│   │       ├── calendarSlice.ts
+│   │       ├── eppSlice.ts             # Filtros de búsqueda EPPs
+│   │       ├── eppRequestsSlice.ts     # Solicitudes de EPPs (Firestore)
+│   │       ├── eppReservationsSlice.ts # Reservas de EPPs (Firestore)
+│   │       ├── eppTypesSlice.ts        # Tipos de EPP dinámicos (Firestore)
+│   │       ├── inventorySlice.ts       # Inventario (Firestore)
+│   │       ├── mantenimientosSlice.ts  # Filtros de búsqueda líneas
+│   │       ├── nightlyTasksSlice.ts    # Tareas nocturnas (Firestore)
+│   │       ├── productionLinesSlice.ts # Líneas de producción + async thunks Firestore
+│   │       ├── requestsSlice.ts        # Solicitudes de insumos (Firestore)
+│   │       ├── reservationsSlice.ts    # Reservas de insumos (Firestore)
+│   │       ├── suppliesSlice.ts        # Insumos (Firestore)
+│   │       ├── themeSlice.ts           # Tema claro/oscuro
+│   │       ├── workerCredentialsSlice.ts
+│   │       └── workersSlice.ts         # Trabajadores + async thunks Firestore
+│   ├── mock-data/                      # Datos de semilla (solo tipos/seed)
+│   │   ├── workers.ts                  # Interface EPPs, Worker; seed data
+│   │   ├── inventory.ts
+│   │   ├── productionLines.ts
+│   │   └── users.ts
 │   ├── pages/
-│   │   ├── DashboardPage.tsx            # Dashboard con indicadores
-│   │   ├── EquiposPage.tsx              # Gestion de equipos
-│   │   ├── MantenimientosPage.tsx       # Insumos requeridos por linea
-│   │   ├── GruposDeTrabajoPage.tsx      # Lista de grupos de trabajo
-│   │   ├── GrupoDetallePage.tsx        # Detalle de grupo (click derecho para admin)
-│   │   ├── GestionEPPSPage.tsx         # Gestion de EPPs por trabajador
-│   │   ├── InventariosPage.tsx          # Inventario de insumos por grupo
-│   │   ├── CalendarioPage.tsx           # Calendario semanal de turnos y mantenimientos
-│   │   ├── ReservasPage.tsx              # Reservas de insumos (admin/encargado)
-│   │   └── ReservasEPPsPage.tsx         # Reservas de EPPs (todos los roles)
-│   ├── App.tsx                          # Configuracion de rutas
-│   ├── main.tsx                         # Entry point
-│   └── index.css                        # Estilos Tailwind + variables CSS
+│   │   ├── DashboardPage.tsx           # Dashboard con indicadores (Redux)
+│   │   ├── EquiposPage.tsx
+│   │   ├── MantenimientosPage.tsx      # Insumos por línea (desde Firestore)
+│   │   ├── GruposDeTrabajoPage.tsx
+│   │   ├── GrupoDetallePage.tsx        # Cambio de rol/grupo persiste en Firestore
+│   │   ├── GestionEPPSPage.tsx         # Gestión de EPPs dinámicos
+│   │   ├── InventariosPage.tsx
+│   │   ├── CalendarioPage.tsx          # Calendario semanal (Redux)
+│   │   ├── ReservasPage.tsx            # Reservas de insumos (admin/encargado)
+│   │   ├── ReservasEPPsPage.tsx        # Reservas de EPPs
+│   │   ├── NuevosRegistrosPage.tsx     # CRUD: trabajadores, insumos, EPPs, líneas
+│   │   └── ReportesTareasNocturnasPage.tsx
+│   ├── App.tsx                         # Firebase Auth listener + DataInitializer
+│   ├── main.tsx
+│   └── index.css
 ├── tailwind.config.js
-├── components.json                      # Configuracion shadcn/ui
+├── components.json
+├── .env                                # VITE_FIREBASE_API_KEY, etc.
 └── package.json
 ```
 
-## Sistema de Autenticacion
+## Autenticación
 
-### Roles de Usuario
+### Sistema
+- **Firebase Auth** con patrón de email interno: `{cedula}@gestion-mtto.app`
+- **Firestore `users/{uid}`** almacena: `email`, `name`, `role`, `username`, `password` (hasheado con bcryptjs)
+- **`initializing: true`** en `authSlice` suprime el flash de login al recargar
+- **Admin auto-bootstrap**: al iniciar sesión con `admin` / `123456` se crea automáticamente el usuario en Firebase Auth si no existe
+
+### Roles
 
 | Rol | Acceso |
 |-----|--------|
-| **admin** | Dashboard, Equipos, Mantenimientos, Calendario, Grupos, Inventarios, EPPs |
+| **admin** | Dashboard, Equipos, Mantenimientos, Calendario, Grupos, Inventarios, EPPs, Nuevos Registros |
 | **encargado** | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo su grupo) |
 | **general** | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo su grupo) |
 
-### Credenciales de Prueba
+### Credenciales
 
 - **Admin**: `admin` / `123456`
-- **Encargado**: `[cedula]` / `123456` (ej: `12345678`)
-- **General**: `[cedula]` / `123456` (ej: `23456789`)
+- **Trabajadores**: cédula sin prefijo `V-` / `123456` (ej: `12345678`)
 
 ### Rutas por Rol
 
-| Rol | Ruta Base | Pagina Inicial |
+| Rol | Ruta Base | Página Inicial |
 |-----|-----------|----------------|
 | admin | `/` | Dashboard |
 | encargado | `/encargado` | Calendario |
 | general | `/general` | Calendario |
 
-### Persistencia
+## Persistencia
 
-Todos los estados se persisten en localStorage:
-- `authState` - Sesion de usuario
-- `calendarState` - Mantenimientos del calendario
-- `mantenimientosState` - Filtro de busqueda
-- `eppState` - Filtros de busqueda EPPs
-- `theme` - Tema claro/oscuro
-- `workersState` - Modificaciones de trabajadores y fechas de EPPs
-- `eppReservationsState` - Reservas de EPPs
-- `reservationsState` - Reservas de insumos
-- `inventoryState` - Inventario de insumos (modificado al recibir reservas)
+**Firebase Firestore** es la fuente de datos principal (no localStorage):
 
-## Funcionalidades Especiales
+| Colección | Uso |
+|-----------|-----|
+| `users` | Usuarios y perfiles (`{uid}`) |
+| `workers` | Trabajadores (`{cedula}`, contiene `uid`, `epps`) |
+| `supplies` | Insumos registrados |
+| `eppTypes` | Tipos de EPP con `name`, `code`, `renewalTime` |
+| `productionLines` | Líneas de producción con máquinas e insumos |
+| `inventory` | Inventario por grupo |
+| `requests` | Solicitudes de insumos |
+| `reservations` | Reservas de insumos |
+| `eppRequests` | Solicitudes de EPPs |
+| `eppReservations` | Reservas de EPPs |
+| `calendar` | Mantenimientos del calendario |
+| `nightlyTasks` | Tareas nocturnas |
 
-### Renovacion Automatica de EPPs
-Cuando un trabajador (encargado o general) marca una reserva de EPPs como recibida:
+## Funcionalidades Clave
+
+### NuevosRegistrosPage (admin)
+CRUD completo con persistencia a Firestore y notificaciones sweetalert2:
+- **Trabajadores**: crea usuario Firebase Auth sin auto-login (REST API), asigna contraseña, persiste en Firestore
+- **Insumos**: alta/baja/modificación de insumos
+- **EPPs**: tipos de EPP dinámicos; al crear uno nuevo, se agrega automáticamente `{lastRenewal: "", nextRenewal: "", notOwned: true}` a todos los trabajadores existentes
+- **Líneas de Producción**: auto-generación de IDs (formato `LAM-001`), IDs de máquinas compuestos (`LAM-001-MAQ-002`), persistencia en Firestore
+
+### EPPs Dinámicos
+- Los tipos de EPP se gestionan desde la pestaña EPPs de NuevosRegistrosPage
+- Cada EPP tiene: `name`, `code`, `renewalTime` (meses)
+- La clave en el mapa `epps` del trabajador se deriva del nombre (`eppNameToKey`)
+- La página GestionEPPSPage usa `eppTypes` del store para mostrar etiquetas e íconos dinámicos
+
+### GrupoDetallePage
+- Cambio de rol y equipo persiste en `users/{uid}` (via `updateUserProfile`) y `workers/{cedula}` (via `patchWorker`)
+
+### Renovación Automática de EPPs
+Cuando un trabajador marca una reserva de EPPs como recibida:
 - **Recibida completa**: todas las fechas de EPPs se actualizan
 - **Recibida parcial**: solo los EPPs recibidos actualizan sus fechas
 - `lastRenewal` se establece a la fecha actual
-- `nextRenewal` se establece a 3 meses desde la fecha actual
+- `nextRenewal` se establece según `renewalTime` del tipo de EPP
 
-## Mock Data
-
-### Workers (workers.ts)
-- 16 trabajadores en 4 grupos (G1, G2, G3, TN)
-- Cada grupo tiene 1 encargado + 3 generales
-- EPPs: casco, lentes, botas, auditivo, fullFace
-- Fechas con estados: vigente, por vencer, vencido
-
-### Production Lines (productionLines.ts)
-- 15 lineas de produccion: Laminacion 1-6, Molienda 1-6, Desgerminacion 1-3
-- 4 maquinas por linea con insumos requeridos
-- Insumos: traje_antiderrame, guantes, esponjas, gerdex
-
-### Users (users.ts)
-- 17 usuarios: 1 admin + 16 trabajadores
-- Username: cedula sin prefijo "V-" (ej: 12345678)
-- Password: 123456 para todos
-
-### Inventory (inventory.ts)
-- 7 items por grupo: trajes_anti_derrame, guantes, esponjas, gerdex, espatulas, manguera_aire_comprimido, manguera_de_agua
-- Estados: optimo, bajo, sin_stock
-
-### Rotacion (rotation.ts)
-Logica de turnos:
-- **TN**: Lunes-viernes 7am-4pm, sab/dom descanso
-- **G1, G2, G3**: Rotacion de 3 semanas
-  - DIURNO: 6am - 6pm
-  - NOCTURNO: 6pm - 6am
-  - MEDIA_JORNADA: 6am - 1pm
-  - LIBRE/DESCANSO
-
-## Funcionalidades por Pagina
+## Funcionalidades por Página
 
 ### DashboardPage
-Indicadores:
-- Trabajadores registrados
-- Lineas de produccion
-- Equipos en planta
-- Mantenimiento en curso (grupos que intervienen)
-- EPPs vencidos
-- Grupos con inventario en 0
+Indicadores desde Redux: trabajadores, líneas, equipos, mantenimientos en curso, EPPs vencidos, inventario en 0.
 
 ### CalendarioPage
-- Semana con turnos de todos los grupos
-- Registro de mantenimientos (solo admin)
-- Eliminacion de mantenimientos (solo admin)
-- Mantenimientos de hoy resaltados
-
-### GruposDeTrabajoPage
-- Lista de grupos (admin: todos, encargado/general: solo su grupo)
-- Boton "Mas info" para ver detalle
-- workers: rol, nombre, cantidad
-
-### GrupoDetallePage
-- Cards de trabajadores del grupo
-- Click derecho para modificar (solo admin)
-- Cambiar rol: trabajador-encargado / trabajador-general
-- Cambiar grupo: G1, G2, G3, TN
-
-### InventariosPage
-- Inventario por grupo (admin: todos, encargado/general: solo su grupo)
-- Items con indicadores de estado (optimo/bajo/sin_stock)
-
-### GestionEPPSPage
-- Trabajadores con EPPs (admin: todos, encargado/general: solo su grupo)
-- Busqueda por cedula/nombre
-- Filtro por grupo (admin)
-- Grid de EPPs con estado: vigente/por vencer/vencido
-
-### ReservasPage (admin/encargado)
-- Crear reservas de insumos para un grupo de trabajo
-- Marcar reservas como recibidas (actualiza inventario global)
-- Historial de reservas con filtros
-
-### ReservasEPPsPage (todos los roles)
-- Crear reservas de EPPs para trabajadores
-- Marcar como recibida completa o parcial (actualiza fechas de renovacion)
-- admin: puede crear reservas para cualquier trabajador
-- encargado/general: solo reservas propias o de su grupo
+Semana con turnos de todos los grupos. Registro/eliminación de mantenimientos (admin).
 
 ### MantenimientosPage
-- Lista de lineas de produccion con sus maquinas
-- Insumos requeridos por cada maquina
-- Busqueda por nombre de linea
+Líneas de producción con máquinas e insumos requeridos, búsqueda por nombre. Datos desde `productionLines` Firestore.
+
+### GestionEPPSPage
+Trabajadores con sus EPPs, búsqueda/filtro por grupo. Muestra etiquetas e íconos desde `eppTypes` + fallbacks estáticos. Estados: vigente/por vencer/vencido.
+
+### NuevosRegistrosPage
+CRUD completo con Firestore. Incluye validaciones, modales de confirmación y notificaciones sweetalert2.
 
 ## Comandos
 
@@ -209,7 +199,7 @@ npm install
 # Iniciar desarrollo
 npm run dev
 
-# Build para produccion
+# Build para producción
 npm run build
 
 # Preview build
@@ -218,9 +208,11 @@ npm run preview
 
 ## Notas
 
-- El proyecto usa variables CSS para theming (shadcn/ui default)
-- Las modificaciones de trabajadores persisten en localStorage
-- Las fechas de EPPs tienen como referencia el 11 mayo 2026
-- Configuracion de TypeScript con path aliases (@/)
-- Sidebar es dinamico segun el rol del usuario
-- Las rutas estan protegidas y redirigen segun el rol
+- **Firebase**: requiere archivo `.env` con `VITE_FIREBASE_API_KEY` y demás variables de Firebase
+- **Contraseñas**: se hashean con bcryptjs antes de almacenar en Firestore
+- **Admin bootstrap**: al primer login con `admin` / `123456` se crea el usuario en Firebase Auth automáticamente
+- **Path aliases**: `@/` mapea a `src/`
+- **Sidebar**: dinámico según rol del usuario
+- **Rutas**: protegidas por `ProtectedRoute.tsx`, redirigen según rol
+- **EPPs**: las claves en el trabajador se generan con `eppNameToKey(name)` (lowercase, spaces → underscores)
+- **IDs de líneas/máquinas**: se generan con `generateIdFromName(name)` (3 letras + `-` + 3 dígitos)

@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
-import { logout, clearError, loginAsync } from "@/store/slices/authSlice"
+import { loginAsync, clearError } from "@/store/slices/authSlice"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Factory } from "lucide-react"
+import { Factory, Loader2 } from "lucide-react"
 
 export function Login() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { error, user, isAuthenticated } = useAppSelector((state) => state.auth)
+  const { error, user, isAuthenticated, loading } = useAppSelector((state) => state.auth)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
 
@@ -32,22 +32,17 @@ export function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    dispatch(logout())
     dispatch(loginAsync({ username, password }))
   }
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUsername(e.target.value)
-    if (error) {
-      dispatch(clearError())
-    }
+    if (error) dispatch(clearError())
   }
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value)
-    if (error) {
-      dispatch(clearError())
-    }
+    if (error) dispatch(clearError())
   }
 
   return (
@@ -71,7 +66,7 @@ export function Login() {
               <Input
                 id="username"
                 type="text"
-                placeholder="Usuario o Cédula"
+                placeholder="Cédula de identidad"
                 value={username}
                 onChange={handleUsernameChange}
                 required
@@ -95,14 +90,17 @@ export function Login() {
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full">
-              Iniciar Sesión
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Iniciando sesión...
+                </>
+              ) : (
+                "Iniciar Sesión"
+              )}
             </Button>
           </form>
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            <p>Admin: admin / 123456</p>
-            <p>Trabajadores: [cédula] / 123456</p>
-          </div>
         </CardContent>
       </Card>
     </div>

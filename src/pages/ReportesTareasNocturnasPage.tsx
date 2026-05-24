@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { addNightlyTaskReport, clearNightlyTaskReports, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
-import { productionLines } from "@/mock-data/productionLines"
-import { normalizeName, normalizeSupplyName } from "@/helpers/normalize"
+import { normalizeName } from "@/helpers/normalize"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -72,7 +71,10 @@ export default function ReportesTareasNocturnasPage() {
     return reports.filter((rep) => rep.team === userWorkTeam)
   }, [reports, userWorkTeam])
 
-  const selectedLine = productionLines.find((l) => l.id === Number(selectedLineId))
+  const productionLines = useAppSelector((state) => state.productionLines.lines)
+  const selectedLine = selectedLineId !== ""
+    ? productionLines.find((l) => l.id === selectedLineId)
+    : undefined
 
   const availableEquipment = selectedLine?.machines.filter(
     (m) => !selectedEquipment.some((e) => e.machineId === m.machineId)
@@ -101,7 +103,7 @@ export default function ReportesTareasNocturnasPage() {
 
   const handleSeedMockReport = () => {
     if (!userWorker) return
-    seedMockReport(dispatch, userWorker)
+    seedMockReport(dispatch, userWorker, productionLines)
   }
 
   const handleClearMockData = () => {
@@ -380,7 +382,7 @@ export default function ReportesTareasNocturnasPage() {
                         <div className="flex flex-wrap gap-1">
                           {supplies.map((supply, idx) => (
                             <Badge key={idx} variant="secondary" className="text-xs">
-                              {normalizeSupplyName(supply.supply)}: {supply.quantity} {supply.unit}
+                              {supply.supplyName}: {supply.quantity} {supply.unit}
                             </Badge>
                           ))}
                         </div>
@@ -399,15 +401,15 @@ export default function ReportesTareasNocturnasPage() {
                       const machine = line?.machines.find((m) => m.machineId === eq.machineId)
                       const supplies = machine?.supplies_required || []
                       supplies.forEach((supply) => {
-                        if (!totals[supply.supply]) {
-                          totals[supply.supply] = { quantity: 0, unit: supply.unit }
+                        if (!totals[supply.supplyName]) {
+                          totals[supply.supplyName] = { quantity: 0, unit: supply.unit }
                         }
-                        totals[supply.supply].quantity += supply.quantity
+                        totals[supply.supplyName].quantity += supply.quantity
                       })
                     })
-                    return Object.entries(totals).map(([supply, data], i) => (
+                    return Object.entries(totals).map(([supplyName, data], i) => (
                       <Badge key={i} variant="default" className="bg-green-500 text-sm">
-                        {normalizeSupplyName(supply)}: {data.quantity} {data.unit}
+                        {supplyName}: {data.quantity} {data.unit}
                       </Badge>
                     ))
                   })()}

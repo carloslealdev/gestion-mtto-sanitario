@@ -1,5 +1,6 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { format } from "date-fns"
+import * as nightlyTasksService from "@/services/nightlyTasksService"
 
 export type ReportType = "mantenimiento_sanitario" | "otras_tareas"
 
@@ -22,31 +23,28 @@ export interface NightlyTaskReport {
 
 interface NightlyTasksState {
   reports: NightlyTaskReport[]
+  loading: boolean
+  error: string | null
 }
 
-const loadState = (): NightlyTasksState => {
-  try {
-    const stored = localStorage.getItem("nightlyTasksState")
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (e) {
-    console.error("Error loading nightly tasks state:", e)
-  }
-  return { reports: [] }
+const initialState: NightlyTasksState = {
+  reports: [],
+  loading: false,
+  error: null,
 }
 
-const initialState: NightlyTasksState = loadState()
+export const fetchNightlyTasks = createAsyncThunk("nightlyTasks/fetch", async () => {
+  return nightlyTasksService.getAllNightlyTasks()
+})
 
 const nightlyTasksSlice = createSlice({
   name: "nightlyTasks",
   initialState,
   reducers: {
-    clearNightlyTaskReports: (state) => {
+    clearNightlyTaskReports(state) {
       state.reports = []
-      saveState(state)
     },
-    addNightlyTaskReport: (
+    addNightlyTaskReport(
       state,
       action: PayloadAction<{
         reportType: ReportType
@@ -56,7 +54,7 @@ const nightlyTasksSlice = createSlice({
         equipment: NightlyTaskEquipment[]
         createdAt?: string
       }>
-    ) => {
+    ) {
       const newReport: NightlyTaskReport = {
         id: `NT-REP-${Date.now()}`,
         reportType: action.payload.reportType,
@@ -67,18 +65,24 @@ const nightlyTasksSlice = createSlice({
         equipment: action.payload.equipment,
       }
       state.reports.unshift(newReport)
-      saveState(state)
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchNightlyTasks.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchNightlyTasks.fulfilled, (state, action) => {
+        state.loading = false
+        state.reports = action.payload
+      })
+      .addCase(fetchNightlyTasks.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message || "Error al cargar reportes"
+      })
+  },
 })
-
-function saveState(state: NightlyTasksState) {
-  try {
-    localStorage.setItem("nightlyTasksState", JSON.stringify(state))
-  } catch (e) {
-    console.error("Error saving nightly tasks state:", e)
-  }
-}
 
 export const { addNightlyTaskReport, clearNightlyTaskReports } = nightlyTasksSlice.actions
 export default nightlyTasksSlice.reducer

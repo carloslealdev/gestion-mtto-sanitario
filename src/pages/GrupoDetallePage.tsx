@@ -14,6 +14,8 @@ import {
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { updateWorker, type WorkerRole, type WorkTeam } from "@/store/slices/workersSlice"
 import { updateUserRoleByCedula } from "@/store/slices/authSlice"
+import { updateUserProfile } from "@/services/authService"
+import { getWorker, patchWorker } from "@/services/workersService"
 import { ArrowLeft, User, Calendar, IdCard } from "lucide-react"
 
 const workTeamLabels: Record<string, string> = {
@@ -158,7 +160,7 @@ export default function GrupoDetallePage() {
     return getEncargadoCount(workers, teamId || "")
   }
 
-  const handleRoleChange = (workerCedula: string, newRole: WorkerRole) => {
+  const handleRoleChange = async (workerCedula: string, newRole: WorkerRole) => {
     if (newRole === "trabajador-encargado") {
       const currentEncargado = getCurrentEncargadoCount()
       const worker = workers.find((w) => w.cedula === workerCedula)
@@ -170,14 +172,26 @@ export default function GrupoDetallePage() {
       }
     }
     dispatch(updateWorker({ cedula: workerCedula, role: newRole }))
-    
+
+    const authRole = newRole === "trabajador-encargado" ? "encargado" : "general"
+
+    try {
+      const workerDoc = await getWorker(workerCedula)
+      if (workerDoc?.uid) {
+        await updateUserProfile(workerDoc.uid, { role: authRole })
+      }
+      await patchWorker(workerCedula, { role: newRole })
+    } catch {
+      // Firestore persistence fallback — Redux state already updated
+    }
+
     const currentUserCedula = user?.username?.replace("V-", "") || ""
     if (currentUserCedula === workerCedula.replace("V-", "")) {
       dispatch(updateUserRoleByCedula({ cedula: workerCedula, workerRole: newRole }))
     }
   }
 
-  const handleTeamChange = (workerCedula: string, newTeam: WorkTeam) => {
+  const handleTeamChange = async (workerCedula: string, newTeam: WorkTeam) => {
     const worker = workers.find((w) => w.cedula === workerCedula)
 
     if (newTeam !== teamId) {
@@ -194,7 +208,13 @@ export default function GrupoDetallePage() {
     const isCurrentUser = currentUserCedula === workerCedula.replace("V-", "")
     
     dispatch(updateWorker({ cedula: workerCedula, workTeam: newTeam }))
-    
+
+    try {
+      await patchWorker(workerCedula, { workTeam: newTeam })
+    } catch {
+      // Firestore persistence fallback — Redux state already updated
+    }
+
     if (isCurrentUser && newTeam !== teamId) {
       navigate(`/grupos-de-trabajo/${newTeam}`)
     }

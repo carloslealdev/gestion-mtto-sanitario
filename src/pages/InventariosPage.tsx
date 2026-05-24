@@ -117,15 +117,19 @@ export default function InventariosPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {(
-                Object.keys(inventory[team]) as Array<keyof GroupInventory>
-              ).map((itemKey) => (
-                <InventoryItem
-                  key={itemKey}
-                  itemKey={itemKey}
-                  quantity={inventory[team][itemKey].quantity}
-                />
-              ))}
+              {inventory[team] ? (
+                (Object.keys(inventory[team]) as Array<keyof GroupInventory>).map((itemKey) => (
+                  <InventoryItem
+                    key={itemKey}
+                    itemKey={itemKey}
+                    quantity={inventory[team][itemKey].quantity}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  No hay datos de inventario disponibles
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

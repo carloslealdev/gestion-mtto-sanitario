@@ -25,7 +25,6 @@ import {
   type ShiftSchedule,
   type WorkTeam,
 } from "@/helpers/rotation"
-import { productionLines } from "@/mock-data/productionLines"
 import { normalizeName } from "@/helpers/normalize"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
@@ -122,6 +121,7 @@ function DayCard({
   canDelete: boolean
 }) {
   const dispatch = useAppDispatch()
+  const productionLines = useAppSelector((state) => state.productionLines.lines)
   const daySchedule = getDaySchedule(date)
   const isTodayDate = isToday(date)
   const dayName = format(date, "EEEE", { locale: es })
@@ -224,6 +224,7 @@ export default function CalendarioPage() {
   const currentDateStr = useAppSelector((state) => state.calendar.currentDate)
   const maintenances = useAppSelector((state) => state.calendar.maintenances)
   const user = useAppSelector((state) => state.auth.user)
+  const productionLines = useAppSelector((state) => state.productionLines.lines)
 
   const canRegister = user?.role === "admin"
   const canDelete = user?.role === "admin"

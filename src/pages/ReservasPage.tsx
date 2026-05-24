@@ -4,7 +4,6 @@ import { addReservation, updateReservationStatus, setReceivedItems, type Reserva
 import { addRequest, updateRequestStatus, setApprovedItems, type RequestItem } from "@/store/slices/requestsSlice"
 import { addToInventory } from "@/store/slices/inventorySlice"
 import { inventoryLabels, type GroupInventory } from "@/mock-data/inventory"
-import { workers } from "@/mock-data/workers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,13 +77,14 @@ export default function ReservasPage() {
 
   const isAdmin = user?.role === "admin"
 
+  const workers = useAppSelector((state) => state.workers.workers)
   const userWorkTeam = useMemo(() => {
     if (user?.role === "encargado") {
       const worker = workers.find((w) => w.cedula.replace("V-", "") === user.username)
       return worker?.workTeam || null
     }
     return null
-  }, [user])
+  }, [user, workers])
 
   const filteredReservations = useMemo(() => {
     let filtered = reservations

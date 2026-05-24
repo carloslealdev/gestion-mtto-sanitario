@@ -1,5 +1,6 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { format } from "date-fns"
+import * as requestsService from "@/services/requestsService"
 
 export interface RequestItem {
   item: string
@@ -17,30 +18,28 @@ export interface ReservationRequest {
 
 interface RequestsState {
   requests: ReservationRequest[]
+  loading: boolean
+  error: string | null
 }
 
-const loadState = (): RequestsState => {
-  try {
-    const stored = localStorage.getItem("requestsState")
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (e) {
-    console.error("Error loading requests state:", e)
-  }
-  return { requests: [] }
+const initialState: RequestsState = {
+  requests: [],
+  loading: false,
+  error: null,
 }
 
-const initialState: RequestsState = loadState()
+export const fetchRequests = createAsyncThunk("requests/fetch", async () => {
+  return requestsService.getAllRequests()
+})
 
 const requestsSlice = createSlice({
   name: "requests",
   initialState,
   reducers: {
-    addRequest: (
+    addRequest(
       state,
       action: PayloadAction<{ team: ReservationRequest["team"]; items: RequestItem[] }>
-    ) => {
+    ) {
       const newRequest: ReservationRequest = {
         id: `REQ-${Date.now()}`,
         team: action.payload.team,
@@ -49,42 +48,46 @@ const requestsSlice = createSlice({
         status: "pendiente",
       }
       state.requests.unshift(newRequest)
-      saveState(state)
     },
-    updateRequestStatus: (
+    updateRequestStatus(
       state,
       action: PayloadAction<{ id: string; status: ReservationRequest["status"] }>
-    ) => {
+    ) {
       const request = state.requests.find((r) => r.id === action.payload.id)
       if (request) {
         request.status = action.payload.status
-        saveState(state)
       }
     },
-    setApprovedItems: (
+    setApprovedItems(
       state,
       action: PayloadAction<{ id: string; approvedItems: RequestItem[] }>
-    ) => {
+    ) {
       const request = state.requests.find((r) => r.id === action.payload.id)
       if (request) {
         request.approvedItems = action.payload.approvedItems
-        saveState(state)
       }
     },
-    deleteRequest: (state, action: PayloadAction<string>) => {
+    deleteRequest(state, action: PayloadAction<string>) {
       state.requests = state.requests.filter((r) => r.id !== action.payload)
-      saveState(state)
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchRequests.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchRequests.fulfilled, (state, action) => {
+        state.loading = false
+        state.requests = action.payload
+      })
+      .addCase(fetchRequests.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message || "Error al cargar solicitudes"
+      })
   },
 })
 
-function saveState(state: RequestsState) {
-  try {
-    localStorage.setItem("requestsState", JSON.stringify(state))
-  } catch (e) {
-    console.error("Error saving requests state:", e)
-  }
-}
-
-export const { addRequest, updateRequestStatus, setApprovedItems, deleteRequest } = requestsSlice.actions
+export const { addRequest, updateRequestStatus, setApprovedItems, deleteRequest } =
+  requestsSlice.actions
 export default requestsSlice.reducer

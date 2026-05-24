@@ -1,13 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { productionLines } from "@/mock-data/productionLines"
-import { normalizeName, normalizeSupplyName } from "@/helpers/normalize"
+import { normalizeName } from "@/helpers/normalize"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { setSearchTerm } from "@/store/slices/mantenimientosSlice"
 
 export default function MantenimientosPage() {
   const dispatch = useAppDispatch()
   const searchTerm = useAppSelector((state) => state.mantenimientos.searchTerm)
+  const productionLines = useAppSelector((state) => state.productionLines.lines)
 
   const filteredLines = productionLines.filter((line) =>
     line.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -70,7 +70,7 @@ export default function MantenimientosPage() {
                             </td>
                           </>
                         )}
-                        <td className="p-4 align-middle">{normalizeSupplyName(supply.supply)}</td>
+                        <td className="p-4 align-middle">{supply.supplyName}</td>
                         <td className="p-4 align-middle">{supply.quantity}</td>
                         <td className="p-4 align-middle">{supply.unit}</td>
                       </tr>

@@ -12,22 +12,6 @@ const workTeamLabels: Record<string, string> = {
   TN: "Turno Normal",
 };
 
-const eppLabels: Record<string, string> = {
-  casco: "Casco",
-  lentes: "Lentes",
-  botas: "Botas",
-  auditivo: "Protector Auditivo",
-  fullFace: "Máscara Completa",
-};
-
-const eppIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  casco: HardHat,
-  lentes: Glasses,
-  botas: Footprints,
-  auditivo: Ear,
-  fullFace: Shield,
-};
-
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-ES", {
     year: "numeric",
@@ -69,12 +53,33 @@ function getStatusBadge(nextRenewal: string) {
   );
 }
 
+const staticEppLabels: Record<string, string> = {
+  casco: "Casco",
+  lentes: "Lentes",
+  botas: "Botas",
+  auditivo: "Protector Auditivo",
+  fullFace: "Máscara Completa",
+};
+
+const staticEppIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  casco: HardHat,
+  lentes: Glasses,
+  botas: Footprints,
+  auditivo: Ear,
+  fullFace: Shield,
+};
+
+function eppNameToKey(name: string): string {
+  return name.toLowerCase().replace(/[\s-]+/g, "_")
+}
+
 export default function GestionEPPSPage() {
   const dispatch = useAppDispatch()
   const search = useAppSelector((state) => state.epp.search)
   const teamFilter = useAppSelector((state) => state.epp.teamFilter)
   const workers = useAppSelector((state) => state.workers.workers)
   const user = useAppSelector((state) => state.auth.user)
+  const eppTypes = useAppSelector((state) => state.eppTypes.eppTypes)
 
   const userWorkTeam = workers.find((w) => w.cedula.replace("V-", "") === user?.username)?.workTeam
 
@@ -187,7 +192,10 @@ export default function GestionEPPSPage() {
                     (Object.keys(worker.epps) as Array<keyof typeof worker.epps>).filter((k) => !worker.epps[k]?.notOwned)
                   ).map((eppKey) => {
                     const epp = worker.epps[eppKey];
-                    const Icon = eppIcons[eppKey];
+                    const label = staticEppLabels[eppKey]
+                      ?? eppTypes.find((et) => eppNameToKey(et.name) === eppKey)?.name
+                      ?? eppKey;
+                    const Icon = staticEppIcons[eppKey] ?? Shield;
                     return (
                       <div
                         key={eppKey}
@@ -201,7 +209,7 @@ export default function GestionEPPSPage() {
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <Icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">{eppLabels[eppKey]}</span>
+                          <span className="font-medium text-sm">{label}</span>
                         </div>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
