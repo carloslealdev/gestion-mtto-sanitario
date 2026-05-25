@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, deleteDocument } from "@/lib/firestore"
 
 const COLLECTION = "inventory"
 
@@ -22,6 +22,10 @@ export async function getInventory(groupId: string): Promise<(GroupInventoryData
 
 export async function setInventory(groupId: string, data: GroupInventoryData): Promise<void> {
   await setDocument(COLLECTION, groupId, data)
+}
+
+export async function deleteInventory(groupId: string): Promise<void> {
+  await deleteDocument(COLLECTION, groupId)
 }
 
 export async function updateInventoryItem(

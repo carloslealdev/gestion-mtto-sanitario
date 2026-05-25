@@ -576,12 +576,14 @@ function InsumosSection() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [unit, setUnit] = useState<Supply['unit']>('pieza');
+  const [optimalLevel, setOptimalLevel] = useState(0);
 
   const openCreate = () => {
     setEditingId(null);
     setName('');
     setCode('');
     setUnit('pieza');
+    setOptimalLevel(0);
     setOpen(true);
   };
 
@@ -590,6 +592,7 @@ function InsumosSection() {
     setName(s.name);
     setCode(s.code);
     setUnit(s.unit);
+    setOptimalLevel(s.optimalLevel ?? 0);
     setOpen(true);
   };
 
@@ -598,7 +601,7 @@ function InsumosSection() {
     try {
       if (editingId) {
         await dispatch(
-          updateSupplyAsync({ id: editingId, name, code, unit }),
+          updateSupplyAsync({ id: editingId, name, code, unit, optimalLevel }),
         ).unwrap();
         Swal.fire({
           icon: 'success',
@@ -609,7 +612,7 @@ function InsumosSection() {
           showConfirmButton: false,
         });
       } else {
-        await dispatch(addSupplyAsync({ name, code, unit })).unwrap();
+        await dispatch(addSupplyAsync({ name, code, unit, optimalLevel })).unwrap();
         Swal.fire({
           icon: 'success',
           title: 'Insumo creado',
@@ -746,6 +749,15 @@ function InsumosSection() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className='space-y-1'>
+              <label className='text-sm font-medium'>Nivel óptimo</label>
+              <Input
+                type='number'
+                min={0}
+                value={optimalLevel || ""}
+                onChange={(e) => setOptimalLevel(Number(e.target.value))}
+              />
             </div>
             <div className='flex gap-2'>
               <Button onClick={handleSave} disabled={!name || !code}>

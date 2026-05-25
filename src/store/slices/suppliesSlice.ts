@@ -6,6 +6,7 @@ export interface Supply {
   name: string
   code: string
   unit: "pieza" | "par" | "unidad" | "litro"
+  optimalLevel?: number
 }
 
 interface SuppliesState {

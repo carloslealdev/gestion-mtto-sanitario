@@ -17,6 +17,10 @@ export const fetchInventory = createAsyncThunk("inventory/fetch", async () => {
   const docs = await inventoryService.getAllInventories()
   const result: Record<string, Record<string, { quantity: number }>> = {}
   for (const doc of docs) {
+    if (!Array.isArray(doc.items)) {
+      console.warn("Inventario: documento sin 'items' como arreglo", doc)
+      continue
+    }
     const group: Record<string, { quantity: number }> = {}
     for (const item of doc.items) {
       group[item.item] = { quantity: item.quantity }
@@ -25,6 +29,43 @@ export const fetchInventory = createAsyncThunk("inventory/fetch", async () => {
   }
   return result
 })
+
+export const fetchGroupInventory = createAsyncThunk(
+  "inventory/fetchGroup",
+  async (groupId: string) => {
+    const doc = await inventoryService.getInventory(groupId)
+    if (!doc) return { groupId, items: {} }
+    if (!Array.isArray(doc.items)) {
+      console.warn("Inventario: documento de grupo sin 'items' como arreglo", doc)
+      return { groupId, items: {} }
+    }
+    const group: Record<string, { quantity: number }> = {}
+    for (const item of doc.items) {
+      group[item.item] = { quantity: item.quantity }
+    }
+    return { groupId, items: group }
+  }
+)
+
+export const saveGroupInventoryAsync = createAsyncThunk(
+  "inventory/saveGroupInventoryAsync",
+  async ({ groupId, items }: { groupId: string; items: { item: string; quantity: number }[] }) => {
+    await inventoryService.setInventory(groupId, { groupId, items })
+    const result: Record<string, { quantity: number }> = {}
+    for (const item of items) {
+      result[item.item] = { quantity: item.quantity }
+    }
+    return { groupId, items: result }
+  }
+)
+
+export const deleteGroupInventoryAsync = createAsyncThunk(
+  "inventory/deleteGroupInventoryAsync",
+  async (groupId: string) => {
+    await inventoryService.deleteInventory(groupId)
+    return groupId
+  }
+)
 
 const inventorySlice = createSlice({
   name: "inventory",
@@ -78,6 +119,15 @@ const inventorySlice = createSlice({
       .addCase(fetchInventory.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar inventario"
+      })
+      .addCase(saveGroupInventoryAsync.fulfilled, (state, action) => {
+        state.inventory[action.payload.groupId] = action.payload.items
+      })
+      .addCase(fetchGroupInventory.fulfilled, (state, action) => {
+        state.inventory[action.payload.groupId] = action.payload.items
+      })
+      .addCase(deleteGroupInventoryAsync.fulfilled, (state, action) => {
+        delete state.inventory[action.payload]
       })
   },
 })

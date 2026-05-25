@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -6,8 +7,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  getTaskAssignments,
+  addTaskAssignment,
+  removeTaskAssignment,
+} from "@/services/taskAssignmentsService"
 import {
   startOfWeek,
   endOfWeek,
@@ -29,8 +34,8 @@ import { normalizeName } from "@/helpers/normalize"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
   setCurrentDate,
-  addMaintenance,
-  removeMaintenance,
+  addMaintenanceEntry,
+  removeMaintenanceEntry,
   type MaintenanceEntry,
 } from "@/store/slices/calendarSlice"
 import type { NightlyTaskReport } from "@/store/slices/nightlyTasksSlice"
@@ -46,6 +51,18 @@ import {
   Wrench,
   X,
 } from "lucide-react"
+
+let maintenanceIdCounter = 0
+const generateMaintenanceId = (lineId: number) => {
+  maintenanceIdCounter += 1
+  return maintenanceIdCounter + lineId * 1000
+}
+
+let taskAssignmentIdCounter = 0
+const generateTaskAssignmentId = () => {
+  taskAssignmentIdCounter += 1
+  return `ta_${taskAssignmentIdCounter}_${Date.now()}`
+}
 
 const teamLabels: Record<WorkTeam, string> = {
   G1: "Grupo 1",
@@ -128,17 +145,79 @@ function DayCard({
   const dateStr = format(date, "d MMM", { locale: es })
   const dateKey = format(date, "yyyy-MM-dd")
 
-  const handleAddMaintenance = (lineId: number, lineName: string) => {
-    const newMaintenance: MaintenanceEntry = {
-      id: Date.now(),
-      lineId,
-      lineName,
-    }
-    dispatch(addMaintenance({ dateKey, maintenance: newMaintenance }))
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedLineIds, setSelectedLineIds] = useState<number[]>([])
+  const [saving, setSaving] = useState(false)
+
+  const toggleLine = (lineId: number) => {
+    setSelectedLineIds((prev) =>
+      prev.includes(lineId)
+        ? prev.filter((id) => id !== lineId)
+        : [...prev, lineId]
+    )
   }
 
-  const handleRemoveMaintenance = (maintenanceId: number) => {
-    dispatch(removeMaintenance({ dateKey, maintenanceId }))
+  const handleSaveMaintenances = async () => {
+    if (selectedLineIds.length === 0) return
+    setSaving(true)
+    try {
+      for (const lineId of selectedLineIds) {
+        const line = productionLines.find((l) => l.id === lineId)
+        if (!line) continue
+        const newMaintenance: MaintenanceEntry = {
+          id: generateMaintenanceId(lineId),
+          lineId,
+          lineName: line.name,
+        }
+        await dispatch(addMaintenanceEntry({ dateKey, maintenance: newMaintenance })).unwrap()
+      }
+      await Swal.fire({
+        icon: "success",
+        title: "Mantenimientos registrados",
+        timer: 2000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+      setSelectedLineIds([])
+      setDialogOpen(false)
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron guardar los mantenimientos",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemoveMaintenance = async (maintenanceId: number) => {
+    const result = await Swal.fire({
+      title: "¿Eliminar mantenimiento?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+    })
+    if (!result.isConfirmed) return
+    try {
+      await dispatch(removeMaintenanceEntry({ dateKey, maintenanceId })).unwrap()
+      await Swal.fire({
+        icon: "success",
+        title: "Mantenimiento eliminado",
+        timer: 2000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo eliminar el mantenimiento",
+      })
+    }
   }
 
   return (
@@ -158,34 +237,65 @@ function DayCard({
         ))}
         <div className="pt-2 border-t">
           {canRegister && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Registrar mantenimiento
-                </Button>
-              </DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setSelectedLineIds([])
+                  setDialogOpen(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Registrar mantenimiento
+              </Button>
             <DialogContent className="sm:max-w-md max-w-[calc(100%-2rem)] max-h-[80vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Seleccionar Línea de Producción</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto space-y-2 flex-1">
                 {productionLines.map((line) => {
-                  const isDisabled = disabledLineIds.includes(line.id)
+                  const isRegistered = disabledLineIds.includes(line.id)
+                  const isSelected = selectedLineIds.includes(line.id)
                   return (
                     <Button
                       key={line.id}
-                      variant="outline"
+                      variant={isSelected ? "default" : "outline"}
                       className="w-full justify-start text-left"
-                      disabled={isDisabled}
-                      onClick={() => handleAddMaintenance(line.id, line.name)}
+                      disabled={isRegistered}
+                      onClick={() => {
+                        if (!isRegistered) toggleLine(line.id)
+                      }}
                     >
-                      <Wrench className="h-4 w-4 mr-2" />
-                      {line.name}
-                      {isDisabled && " (Ya registrado)"}
+                      <Wrench className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="flex-1">{line.name}</span>
+                      {isRegistered && (
+                        <span className="text-xs text-muted-foreground">(Ya registrado)</span>
+                      )}
+                      {isSelected && !isRegistered && (
+                        <span className="text-xs ml-1">✓</span>
+                      )}
                     </Button>
                   )
                 })}
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedLineIds([])
+                    setDialogOpen(false)
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveMaintenances}
+                  disabled={selectedLineIds.length === 0 || saving}
+                >
+                  {saving ? "Guardando..." : "Guardar cambios"}
+                </Button>
               </div>
             </DialogContent>
             </Dialog>
@@ -253,35 +363,14 @@ export default function CalendarioPage() {
   const todayKey = format(currentDate, "yyyy-MM-dd")
   const todayMaintenances = maintenances[todayKey] || []
 
-  const loadTaskAssignments = (): { maintenanceId: string; machineId: string; team: string }[] => {
-    try {
-      const stored = localStorage.getItem("taskAssignmentsState")
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (parsed.dateKey === todayKey) {
-          return parsed.assignments
-        }
-      }
-    } catch (e) {
-      console.error("Error loading task assignments:", e)
-    }
-    return []
-  }
-
-  const saveTaskAssignments = (assignments: { maintenanceId: string; machineId: string; team: string }[]) => {
-    try {
-      localStorage.setItem("taskAssignmentsState", JSON.stringify({
-        dateKey: todayKey,
-        assignments,
-      }))
-    } catch (e) {
-      console.error("Error saving task assignments:", e)
-    }
-  }
-
   const [selectedMaintenanceId, setSelectedMaintenanceId] = useState<string>("")
   const [selectedTeam, setSelectedTeam] = useState<string>("")
-  const [taskAssignments, setTaskAssignments] = useState<{ maintenanceId: string; machineId: string; team: string }[]>(() => loadTaskAssignments())
+  const [taskAssignments, setTaskAssignments] = useState<{ id: string; maintenanceId: string; machineId: string; team: string }[]>([])
+  const [taskSaving, setTaskSaving] = useState(false)
+
+  useEffect(() => {
+    getTaskAssignments(todayKey).then(setTaskAssignments)
+  }, [todayKey])
 
   const allWorkers = useAppSelector((state) => state.workers.workers)
 
@@ -299,23 +388,64 @@ export default function CalendarioPage() {
     { value: "G3", label: `${teamLabels.G3} - ${getEncargadoName("G3")}` },
   ]
 
-  const handleAddTaskAssignment = () => {
-    if (selectedMaintenanceId && selectedTeam) {
+  const handleAddTaskAssignment = async () => {
+    if (!selectedMaintenanceId || !selectedTeam) return
+    setTaskSaving(true)
+    try {
       const separatorIndex = selectedMaintenanceId.indexOf("-")
       const maintenanceId = selectedMaintenanceId.substring(0, separatorIndex)
       const machineId = selectedMaintenanceId.substring(separatorIndex + 1)
-      const newAssignments = [...taskAssignments, { maintenanceId, machineId, team: selectedTeam }]
-      setTaskAssignments(newAssignments)
-      saveTaskAssignments(newAssignments)
+      const assignment = { id: generateTaskAssignmentId(), maintenanceId, machineId, team: selectedTeam }
+      await addTaskAssignment(todayKey, assignment)
+      setTaskAssignments((prev) => [...prev, assignment])
       setSelectedMaintenanceId("")
       setSelectedTeam("")
+      await Swal.fire({
+        icon: "success",
+        title: "Tarea asignada",
+        timer: 2000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo asignar la tarea",
+      })
+    } finally {
+      setTaskSaving(false)
     }
   }
 
-  const handleRemoveTaskAssignment = (index: number) => {
-    const newAssignments = taskAssignments.filter((_, i) => i !== index)
-    setTaskAssignments(newAssignments)
-    saveTaskAssignments(newAssignments)
+  const handleRemoveTaskAssignment = async (assignmentId: string) => {
+    const result = await Swal.fire({
+      title: "¿Eliminar tarea?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+    })
+    if (!result.isConfirmed) return
+    try {
+      await removeTaskAssignment(todayKey, assignmentId)
+      setTaskAssignments((prev) => prev.filter((a) => a.id !== assignmentId))
+      await Swal.fire({
+        icon: "success",
+        title: "Tarea eliminada",
+        timer: 2000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo eliminar la tarea",
+      })
+    }
   }
 
   const reports = useAppSelector((state) => state.nightlyTasks.reports)
@@ -487,98 +617,104 @@ export default function CalendarioPage() {
               </div>
             )}
           </div>
-
-          <div>
-            <h3 className="text-sm font-medium mb-3">Distribución de tareas diurnas</h3>
-            
-            {todayMaintenances.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay mantenimientos registrados para el día de hoy. Registra mantenimientos en el calendario arriba.
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                  <div className="w-full sm:w-64">
-                    <label className="text-sm font-medium mb-1 block">Equipo/Mantenimiento</label>
-                    <select
-                      value={selectedMaintenanceId}
-                      onChange={(e) => setSelectedMaintenanceId(e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    >
-                      <option value="">Seleccionar equipo</option>
-                      {todayMaintenances.flatMap((m) => {
-                        const line = productionLines.find((l) => l.name === m.lineName)
-                        return line?.machines.map((machine) => ({
-                          maintenanceId: m.id.toString(),
-                          machineId: machine.machineId,
-                          machineName: machine.name,
-                          lineName: m.lineName,
-                        })) || []
-                      }).map((eq) => (
-                        <option key={`${eq.maintenanceId}-${eq.machineId}`} value={`${eq.maintenanceId}-${eq.machineId}`}>
-                          {normalizeName(eq.machineName)} - {eq.lineName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="w-full sm:w-64">
-                    <label className="text-sm font-medium mb-1 block">Grupo de trabajo</label>
-                    <select
-                      value={selectedTeam}
-                      onChange={(e) => setSelectedTeam(e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    >
-                      <option value="">Seleccionar grupo</option>
-                      {availableTeams.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={handleAddTaskAssignment}
-                      disabled={!selectedMaintenanceId || !selectedTeam}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar
-                    </Button>
-                  </div>
-                </div>
-
-                {taskAssignments.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Tareas asignadas:</label>
-                    {taskAssignments.map((assignment, index) => {
-                      const maintenance = todayMaintenances.find((m) => m.id.toString() === assignment.maintenanceId)
-                      const line = productionLines.find((l) => l.name === maintenance?.lineName)
-                      const machine = line?.machines.find((m) => m.machineId === assignment.machineId)
-                      return (
-                        <div key={index} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
-                          <div className="flex-1">
-                            <span className="font-medium">{normalizeName(machine?.name || assignment.machineId)}</span>
-                            <span className="text-muted-foreground text-xs ml-2">
-                              - {maintenance?.lineName} - {teamLabels[assignment.team as WorkTeam]}
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveTaskAssignment(index)}
-                          >
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         </CardContent>
       </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Distribución de tareas diurnas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {todayMaintenances.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay mantenimientos registrados para el día de hoy. Registra mantenimientos en el calendario arriba.
+            </p>
+          ) : (
+            <>
+              {isAdmin && (
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="w-full sm:w-64">
+                  <label className="text-sm font-medium mb-1 block">Equipo/Mantenimiento</label>
+                  <select
+                    value={selectedMaintenanceId}
+                    onChange={(e) => setSelectedMaintenanceId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Seleccionar equipo</option>
+                    {todayMaintenances.flatMap((m) => {
+                      const line = productionLines.find((l) => l.name === m.lineName)
+                      return line?.machines.map((machine) => ({
+                        maintenanceId: m.id.toString(),
+                        machineId: machine.machineId,
+                        machineName: machine.name,
+                        lineName: m.lineName,
+                      })) || []
+                    }).map((eq) => (
+                      <option key={`${eq.maintenanceId}-${eq.machineId}`} value={`${eq.maintenanceId}-${eq.machineId}`}>
+                        {normalizeName(eq.machineName)} - {eq.lineName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-full sm:w-64">
+                  <label className="text-sm font-medium mb-1 block">Grupo de trabajo</label>
+                  <select
+                    value={selectedTeam}
+                    onChange={(e) => setSelectedTeam(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Seleccionar grupo</option>
+                    {availableTeams.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={handleAddTaskAssignment}
+                    disabled={!selectedMaintenanceId || !selectedTeam || taskSaving}
+                  >
+                    {taskSaving ? "Guardando..." : <><Plus className="h-4 w-4 mr-2" />Agregar</>}
+                  </Button>
+                </div>
+              </div>
+              )}
+
+              {taskAssignments.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tareas asignadas:</label>
+                  {taskAssignments.map((assignment) => {
+                    const maintenance = todayMaintenances.find((m) => m.id.toString() === assignment.maintenanceId)
+                    const line = productionLines.find((l) => l.name === maintenance?.lineName)
+                    const machine = line?.machines.find((m) => m.machineId === assignment.machineId)
+                    return (
+                      <div key={assignment.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
+                        <div className="flex-1">
+                          <span className="font-medium">{normalizeName(machine?.name || assignment.machineId)}</span>
+                          <span className="text-muted-foreground text-xs ml-2">
+                            - {maintenance?.lineName} - {teamLabels[assignment.team as WorkTeam]}
+                          </span>
+                        </div>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveTaskAssignment(assignment.id)}
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
         <DialogContent className="sm:max-w-lg max-w-[calc(100%-2rem)] max-h-[80vh] flex flex-col">
