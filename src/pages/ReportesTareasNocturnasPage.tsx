@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
+import Swal from "sweetalert2"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addNightlyTaskReport, clearNightlyTaskReports, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
+import { fetchNightlyTasks, addNightlyTaskReportAsync, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
 import { normalizeName } from "@/helpers/normalize"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,8 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { seedMockReport } from "@/helpers/seedMockReport"
-import { Plus, Trash2, Eye, Download } from "lucide-react"
+import { Plus, Trash2, Eye } from "lucide-react"
 
 type Team = "G1" | "G2" | "G3" | "TN"
 
@@ -50,6 +50,10 @@ export default function ReportesTareasNocturnasPage() {
   const reports = useAppSelector((state) => state.nightlyTasks.reports)
   const user = useAppSelector((state) => state.auth.user)
   const allWorkers = useAppSelector((state) => state.workers.workers)
+
+  useEffect(() => {
+    dispatch(fetchNightlyTasks())
+  }, [dispatch])
 
   const [showForm, setShowForm] = useState(false)
   const [reportType, setReportType] = useState<ReportType | "">("")
@@ -101,31 +105,35 @@ export default function ReportesTareasNocturnasPage() {
     setSelectedEquipment(selectedEquipment.filter((_, i) => i !== index))
   }
 
-  const handleSeedMockReport = () => {
-    if (!userWorker) return
-    seedMockReport(dispatch, userWorker, productionLines)
-  }
-
-  const handleClearMockData = () => {
-    dispatch(clearNightlyTaskReports())
-  }
-
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     if (!userWorker || selectedEquipment.length === 0 || !reportType) return
 
-    dispatch(addNightlyTaskReport({
-      reportType: reportType as ReportType,
-      team: userWorkTeam as Team,
-      responsibleName: `${userWorker.firstName} ${userWorker.lastName}`,
-      responsibleCedula: userWorker.cedula,
-      equipment: selectedEquipment,
-    }))
+    try {
+      await dispatch(addNightlyTaskReportAsync({
+        reportType: reportType as ReportType,
+        team: userWorkTeam as Team,
+        responsibleName: `${userWorker.firstName} ${userWorker.lastName}`,
+        responsibleCedula: userWorker.cedula,
+        equipment: selectedEquipment,
+      })).unwrap()
 
-    setReportType("")
-    setSelectedLineId("")
-    setSelectedEquipment([])
-    setSelectedMachineId("")
-    setShowForm(false)
+      Swal.fire({
+        icon: "success",
+        title: "Reporte generado",
+        text: "El reporte de tareas nocturnas se ha guardado exitosamente.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+
+      setReportType("")
+      setSelectedLineId("")
+      setSelectedEquipment([])
+      setSelectedMachineId("")
+      setShowForm(false)
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar el reporte" })
+    }
   }
 
   const pageTitle = userWorkTeam
@@ -215,18 +223,6 @@ export default function ReportesTareasNocturnasPage() {
             <div className="flex items-center justify-between">
               <CardTitle>Generar nuevo reporte</CardTitle>
               <div className="flex gap-2">
-                {!showForm && (
-                  <Button variant="outline" size="sm" onClick={handleSeedMockReport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    CARGAR REPORTE MOCK
-                  </Button>
-                )}
-                {!showForm && (
-                  <Button variant="outline" size="sm" onClick={handleClearMockData}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    LIMPIAR DATA MOCK
-                  </Button>
-                )}
                 {!showForm && (
                   <Button onClick={() => setShowForm(true)}>
                     <Plus className="h-4 w-4 mr-2" />

@@ -13,6 +13,7 @@ import {
   addTaskAssignment,
   removeTaskAssignment,
 } from "@/services/taskAssignmentsService"
+import { setNightlyScope, getNightlyScope, type NightlyScopeItem } from "@/services/nightlyTasksUiService"
 import {
   startOfWeek,
   endOfWeek,
@@ -457,60 +458,73 @@ export default function CalendarioPage() {
     rep.createdAt.startsWith(yesterdayKey)
   )
 
-  interface NightlyScopeItem {
-    lineId: number
-    lineName: string
-    machineId: string
-    machineName: string
-    team: WorkTeam
-  }
-
-  const loadNightlyScope = (): NightlyScopeItem[] => {
-    try {
-      const stored = localStorage.getItem("nightlyScopeState")
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (parsed.dateKey === todayKey) {
-          return parsed.items
-        }
-      }
-    } catch (e) {
-      console.error("Error loading nightly scope:", e)
-    }
-    return []
-  }
-
-  const saveNightlyScope = (items: NightlyScopeItem[]) => {
-    try {
-      localStorage.setItem("nightlyScopeState", JSON.stringify({
-        dateKey: todayKey,
-        items,
-      }))
-    } catch (e) {
-      console.error("Error saving nightly scope:", e)
-    }
-  }
-
-  const [nightlyScopeItems, setNightlyScopeItems] = useState<NightlyScopeItem[]>(() => loadNightlyScope())
+  const [nightlyScopeItems, setNightlyScopeItems] = useState<NightlyScopeItem[]>([])
   const [showReportModal, setShowReportModal] = useState(false)
 
-  const handleLoadReport = (report: NightlyTaskReport) => {
-    const items: NightlyScopeItem[] = report.equipment.map((eq) => ({
+  useEffect(() => {
+    getNightlyScope(todayKey).then(setNightlyScopeItems)
+  }, [todayKey])
+
+  const handleLoadReport = async (report: NightlyTaskReport) => {
+    const items = report.equipment.map((eq) => ({
       lineId: eq.lineId,
       lineName: eq.lineName,
       machineId: eq.machineId,
       machineName: eq.machineName,
-      team: report.team as WorkTeam,
+      team: report.team,
     }))
-    setNightlyScopeItems(items)
-    saveNightlyScope(items)
-    setShowReportModal(false)
+    try {
+      await setNightlyScope(todayKey, items)
+      setNightlyScopeItems(items)
+      setShowReportModal(false)
+      Swal.fire({
+        icon: "success",
+        title: "Alcance cargado",
+        text: "Los equipos reportados se han cargado exitosamente.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo guardar el alcance del grupo nocturno",
+      })
+    }
   }
 
-  const handleRemoveNightlyScope = (index: number) => {
+  const handleRemoveNightlyScope = async (index: number) => {
+    const result = await Swal.fire({
+      title: "¿Eliminar equipo?",
+      text: "Este equipo será removido del alcance del grupo nocturno.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+    })
+    if (!result.isConfirmed) return
+
     const newItems = nightlyScopeItems.filter((_, i) => i !== index)
-    setNightlyScopeItems(newItems)
-    saveNightlyScope(newItems)
+    try {
+      await setNightlyScope(todayKey, newItems)
+      setNightlyScopeItems(newItems)
+      Swal.fire({
+        icon: "success",
+        title: "Equipo eliminado",
+        text: "El equipo ha sido removido del alcance del grupo nocturno.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo eliminar el equipo",
+      })
+    }
   }
 
   return (
@@ -582,15 +596,13 @@ export default function CalendarioPage() {
         </CardContent>
       </Card>
 
-      {isAdmin && (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Para la distribución de tareas</CardTitle>
+          <CardTitle className="text-base">Alcance del grupo nocturno</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="border-b pb-4">
-            <h3 className="text-sm font-medium mb-3">Alcance del grupo nocturno</h3>
-            <div className="flex gap-2">
+        <CardContent>
+          {isAdmin && (
+            <div className="flex gap-2 mb-4">
               <Button variant="outline" size="sm" disabled>
                 Cargar manualmente
               </Button>
@@ -598,28 +610,32 @@ export default function CalendarioPage() {
                 Cargar reporte
               </Button>
             </div>
-            {nightlyScopeItems.length > 0 && (
-              <div className="space-y-2 mt-3">
-                <label className="text-sm font-medium">Equipos reportados por el grupo nocturno:</label>
-                {nightlyScopeItems.map((item, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
-                    <div className="flex-1">
-                      <span className="font-medium">{normalizeName(item.machineName)}</span>
-                      <span className="text-muted-foreground text-xs ml-2">
-                        - {item.lineName} - {teamLabels[item.team]}
-                      </span>
-                    </div>
+          )}
+          {nightlyScopeItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay equipos reportados por el grupo nocturno.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {nightlyScopeItems.map((item, index) => (
+                <div key={index} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center p-2 bg-muted rounded">
+                  <div className="flex-1">
+                    <span className="font-medium">{normalizeName(item.machineName)}</span>
+                    <span className="text-muted-foreground text-xs ml-2">
+                      - {item.lineName} - {teamLabels[item.team]}
+                    </span>
+                  </div>
+                  {isAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveNightlyScope(index)}>
                       <X className="h-4 w-4 text-destructive" />
                     </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
-      )}
 
       <Card>
         <CardHeader>

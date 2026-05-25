@@ -37,6 +37,28 @@ export const fetchNightlyTasks = createAsyncThunk("nightlyTasks/fetch", async ()
   return nightlyTasksService.getAllNightlyTasks()
 })
 
+export const addNightlyTaskReportAsync = createAsyncThunk(
+  "nightlyTasks/addAsync",
+  async (payload: {
+    reportType: ReportType
+    team: NightlyTaskReport["team"]
+    responsibleName: string
+    responsibleCedula: string
+    equipment: NightlyTaskEquipment[]
+  }) => {
+    const data = {
+      reportType: payload.reportType as NightlyTaskReport["reportType"],
+      team: payload.team as NightlyTaskReport["team"],
+      responsibleName: payload.responsibleName,
+      responsibleCedula: payload.responsibleCedula,
+      createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+      equipment: payload.equipment,
+    }
+    const id = await nightlyTasksService.createNightlyTaskReport(data)
+    return { ...data, id }
+  }
+)
+
 const nightlyTasksSlice = createSlice({
   name: "nightlyTasks",
   initialState,
@@ -80,6 +102,18 @@ const nightlyTasksSlice = createSlice({
       .addCase(fetchNightlyTasks.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar reportes"
+      })
+      .addCase(addNightlyTaskReportAsync.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(addNightlyTaskReportAsync.fulfilled, (state, action) => {
+        state.loading = false
+        state.reports.unshift(action.payload)
+      })
+      .addCase(addNightlyTaskReportAsync.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message || "Error al guardar reporte"
       })
   },
 })
