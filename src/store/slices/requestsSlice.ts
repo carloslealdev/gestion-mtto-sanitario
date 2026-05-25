@@ -32,6 +32,44 @@ export const fetchRequests = createAsyncThunk("requests/fetch", async () => {
   return requestsService.getAllRequests()
 })
 
+export const addRequestAsync = createAsyncThunk(
+  "requests/addRequestAsync",
+  async (payload: { team: ReservationRequest["team"]; items: RequestItem[] }) => {
+    const newRequest: Omit<ReservationRequest, "id"> = {
+      team: payload.team,
+      items: payload.items,
+      createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+      status: "pendiente",
+    }
+    const id = await requestsService.createRequest(newRequest)
+    return { ...newRequest, id }
+  }
+)
+
+export const updateRequestStatusAsync = createAsyncThunk(
+  "requests/updateStatusAsync",
+  async (payload: { id: string; status: ReservationRequest["status"] }) => {
+    await requestsService.updateRequestStatus(payload.id, payload.status)
+    return payload
+  }
+)
+
+export const setApprovedItemsAsync = createAsyncThunk(
+  "requests/setApprovedItemsAsync",
+  async (payload: { id: string; approvedItems: RequestItem[] }) => {
+    await requestsService.setApprovedItems(payload.id, payload.approvedItems)
+    return payload
+  }
+)
+
+export const approveRequestAsync = createAsyncThunk(
+  "requests/approveAsync",
+  async (payload: { id: string; items: RequestItem[]; approvedItems: RequestItem[] }) => {
+    await requestsService.approveRequest(payload.id, payload.items, payload.approvedItems)
+    return payload
+  }
+)
+
 const requestsSlice = createSlice({
   name: "requests",
   initialState,
@@ -84,6 +122,29 @@ const requestsSlice = createSlice({
       .addCase(fetchRequests.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar solicitudes"
+      })
+      .addCase(addRequestAsync.fulfilled, (state, action) => {
+        state.requests.unshift(action.payload)
+      })
+      .addCase(updateRequestStatusAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.status = action.payload.status
+        }
+      })
+      .addCase(setApprovedItemsAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.approvedItems = action.payload.approvedItems
+        }
+      })
+      .addCase(approveRequestAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.status = "aprobada"
+          request.items = action.payload.items
+          request.approvedItems = action.payload.approvedItems
+        }
       })
   },
 })

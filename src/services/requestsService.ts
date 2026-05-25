@@ -1,4 +1,4 @@
-import { getAllDocuments, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
 import type { ReservationRequest, RequestItem } from "@/store/slices/requestsSlice"
 
 const COLLECTION = "requests"
@@ -16,11 +16,21 @@ export async function createRequest(data: Omit<ReservationRequest, "id">): Promi
 }
 
 export async function updateRequestStatus(id: string, status: ReservationRequest["status"]): Promise<void> {
-  await setDocument(COLLECTION, id, { status })
+  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
+  if (!existing) throw new Error("Request not found")
+  await setDocument(COLLECTION, id, { ...existing, status })
 }
 
 export async function setApprovedItems(id: string, approvedItems: RequestItem[]): Promise<void> {
-  await setDocument(COLLECTION, id, { approvedItems })
+  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
+  if (!existing) throw new Error("Request not found")
+  await setDocument(COLLECTION, id, { ...existing, approvedItems })
+}
+
+export async function approveRequest(id: string, items: RequestItem[], approvedItems: RequestItem[]): Promise<void> {
+  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
+  if (!existing) throw new Error("Request not found")
+  await setDocument(COLLECTION, id, { ...existing, status: "aprobada", items, approvedItems })
 }
 
 export async function deleteRequest(id: string): Promise<void> {

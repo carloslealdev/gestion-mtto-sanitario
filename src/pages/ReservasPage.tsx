@@ -1,9 +1,25 @@
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
+import Swal from "sweetalert2"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addReservation, updateReservationStatus, setReceivedItems, type ReservationItem, type ReservationStatus } from "@/store/slices/reservationsSlice"
-import { addRequest, updateRequestStatus, setApprovedItems, type RequestItem } from "@/store/slices/requestsSlice"
-import { addToInventory } from "@/store/slices/inventorySlice"
-import { inventoryLabels, type GroupInventory } from "@/mock-data/inventory"
+import {
+  addReservationAsync,
+  updateReservationStatusAsync,
+  setReceivedItemsAsync,
+  fetchReservations,
+  type ReservationItem,
+  type ReservationStatus,
+} from "@/store/slices/reservationsSlice"
+import {
+  addRequestAsync,
+  updateRequestStatusAsync,
+  approveRequestAsync,
+  fetchRequests,
+  type RequestItem,
+} from "@/store/slices/requestsSlice"
+import { addItemsToInventoryAsync } from "@/store/slices/inventorySlice"
+import { fetchSupplies } from "@/store/slices/suppliesSlice"
+import type { Supply } from "@/store/slices/suppliesSlice"
+import { inventoryLabels } from "@/mock-data/inventory"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,8 +54,6 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   cancelada: { color: "bg-gray-500", label: "Cancelada" },
 }
 
-const itemKeys = Object.keys(inventoryLabels) as Array<keyof GroupInventory>
-
 interface DetailReservationData {
   id: string
   items: ReservationItem[]
@@ -47,6 +61,12 @@ interface DetailReservationData {
   date: string
   status: string
   receivedItems?: ReservationItem[]
+}
+
+function getItemLabel(itemKey: string, supplyList: Supply[]): string {
+  const supply = supplyList.find((s) => s.id === itemKey)
+  if (supply) return `${supply.name} (${supply.code})`
+  return inventoryLabels[itemKey] || itemKey
 }
 
 export default function ReservasPage() {
@@ -77,9 +97,17 @@ export default function ReservasPage() {
 
   const isAdmin = user?.role === "admin"
 
+  useEffect(() => {
+    dispatch(fetchReservations())
+    dispatch(fetchRequests())
+    dispatch(fetchSupplies())
+  }, [dispatch])
+
   const workers = useAppSelector((state) => state.workers.workers)
+  const supplies = useAppSelector((state) => state.supplies.supplies)
+  const isEncargado = user?.role === "encargado"
   const userWorkTeam = useMemo(() => {
-    if (user?.role === "encargado") {
+    if (isEncargado) {
       const worker = workers.find((w) => w.cedula.replace("V-", "") === user.username)
       return worker?.workTeam || null
     }
@@ -141,7 +169,7 @@ export default function ReservasPage() {
     setRequestItems(newItems)
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const validItems = items.filter((item) => item.item !== "" && item.quantity > 0)
     if (validItems.length === 0) return
 
@@ -152,18 +180,31 @@ export default function ReservasPage() {
       return acc
     }, [] as ReservationItem[])
 
-    if (approvedRequestId) {
-      dispatch(setApprovedItems({ id: approvedRequestId, approvedItems: uniqueItems }))
-    }
+    try {
+      if (approvedRequestId) {
+        await dispatch(approveRequestAsync({ id: approvedRequestId, items: uniqueItems, approvedItems: uniqueItems })).unwrap()
+      }
 
-    dispatch(addReservation({ team: selectedTeam, items: uniqueItems }))
-    setItems([])
-    setShowForm(false)
-    setIsFromRequest(false)
-    setApprovedRequestId(null)
+
+      await dispatch(addReservationAsync({ team: selectedTeam, items: uniqueItems })).unwrap()
+      Swal.fire({
+        icon: "success",
+        title: "Reserva generada",
+        text: `Reserva para ${workTeamLabels[selectedTeam]} creada exitosamente.`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+      setItems([])
+      setShowForm(false)
+      setIsFromRequest(false)
+      setApprovedRequestId(null)
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la reserva en la base de datos" })
+    }
   }
 
-  const handleGenerateRequest = () => {
+  const handleGenerateRequest = async () => {
     const validItems = requestItems.filter((item) => item.item !== "" && item.quantity > 0)
     if (validItems.length === 0) return
 
@@ -175,13 +216,25 @@ export default function ReservasPage() {
     }, [] as RequestItem[])
 
     if (userWorkTeam && userWorkTeam !== "Sin asignar") {
-      dispatch(addRequest({ team: userWorkTeam as Team, items: uniqueItems }))
+      try {
+        await dispatch(addRequestAsync({ team: userWorkTeam as Team, items: uniqueItems })).unwrap()
+        Swal.fire({
+          icon: "success",
+          title: "Solicitud enviada",
+          text: `Solicitud de reserva para ${workTeamLabels[userWorkTeam]} creada exitosamente.`,
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+        })
+        setRequestItems([])
+        setShowRequestForm(false)
+      } catch {
+        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la solicitud en la base de datos" })
+      }
     }
-    setRequestItems([])
-    setShowRequestForm(false)
   }
 
-  const handleStatusChange = (id: string, status: ReservationStatus) => {
+  const handleStatusChange = async (id: string, status: ReservationStatus) => {
     const reservation = reservations.find((r) => r.id === id)
     if (!reservation) return
 
@@ -189,16 +242,26 @@ export default function ReservasPage() {
       setPartialReceiveModal({ id, items: [...reservation.items] })
       setReceivedItemsLocal([...reservation.items])
     } else {
-      if (status === "retirada_completa") {
-        reservation.items.forEach((item) => {
-          dispatch(addToInventory({
+      try {
+        if (status === "retirada_completa") {
+          await dispatch(addItemsToInventoryAsync({
             team: reservation.team,
-            item: item.item as keyof GroupInventory,
-            quantity: item.quantity,
-          }))
+            items: reservation.items.map((i) => ({ item: i.item, quantity: i.quantity })),
+          })).unwrap()
+        }
+        await dispatch(updateReservationStatusAsync({ id, status })).unwrap()
+        const label = statusConfig[status]?.label || status
+        Swal.fire({
+          icon: "success",
+          title: "Estado actualizado",
+          text: `Reserva marcada como "${label}".`,
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
         })
+      } catch {
+        Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar el estado" })
       }
-      dispatch(updateReservationStatus({ id, status }))
     }
   }
 
@@ -212,20 +275,29 @@ export default function ReservasPage() {
     setReceivedItemsLocal(newItems)
   }
 
-  const handleFinalizePartialReceive = () => {
+  const handleFinalizePartialReceive = async () => {
     if (partialReceiveModal) {
       const reservation = reservations.find((r) => r.id === partialReceiveModal.id)
-      if (reservation) {
-        receivedItems.forEach((item) => {
-          dispatch(addToInventory({
+      try {
+        if (reservation) {
+          await dispatch(addItemsToInventoryAsync({
             team: reservation.team,
-            item: item.item as keyof GroupInventory,
-            quantity: item.quantity,
-          }))
+            items: receivedItems.map((i) => ({ item: i.item, quantity: i.quantity })),
+          })).unwrap()
+        }
+        await dispatch(updateReservationStatusAsync({ id: partialReceiveModal.id, status: "retirada_parcial" })).unwrap()
+        await dispatch(setReceivedItemsAsync({ id: partialReceiveModal.id, receivedItems })).unwrap()
+        Swal.fire({
+          icon: "success",
+          title: "Recepción parcial guardada",
+          text: "Los items recibidos se han registrado correctamente.",
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
         })
+      } catch {
+        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la recepción parcial" })
       }
-      dispatch(updateReservationStatus({ id: partialReceiveModal.id, status: "retirada_parcial" }))
-      dispatch(setReceivedItems({ id: partialReceiveModal.id, receivedItems }))
       setPartialReceiveModal(null)
       setReceivedItemsLocal([])
     }
@@ -260,18 +332,30 @@ export default function ReservasPage() {
       setShowForm(true)
       setIsFromRequest(true)
       setApprovedRequestId(id)
-      dispatch(updateRequestStatus({ id, status: "aprobada" }))
     }
     setSelectedRequest(null)
   }
 
-  const handleRejectRequest = (id: string) => {
-    dispatch(updateRequestStatus({ id, status: "rechazada" }))
+  const handleRejectRequest = async (id: string) => {
+    try {
+      await dispatch(updateRequestStatusAsync({ id, status: "rechazada" })).unwrap()
+      Swal.fire({
+        icon: "success",
+        title: "Solicitud rechazada",
+        text: "La solicitud de reserva ha sido rechazada.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo rechazar la solicitud" })
+    }
     setSelectedRequest(null)
   }
 
-  const availableItems = itemKeys.filter((key) => !items.some((i) => i.item === key))
-  const availableRequestItems = itemKeys.filter((key) => !requestItems.some((i) => i.item === key))
+  const supplyItemKeys = supplies.map((s) => s.id)
+  const availableItems = supplyItemKeys.filter((key) => !items.some((i) => i.item === key))
+  const availableRequestItems = supplyItemKeys.filter((key) => !requestItems.some((i) => i.item === key))
 
   const pageTitle = userWorkTeam && userWorkTeam !== "Sin asignar"
     ? `Reservas de insumos - ${workTeamLabels[userWorkTeam]}`
@@ -336,7 +420,7 @@ export default function ReservasPage() {
                     {isAdmin && <th className="text-left py-3 px-4 font-medium">Grupo</th>}
                     <th className="text-left py-3 px-4 font-medium">Fecha y Hora</th>
                     <th className="text-left py-3 px-4 font-medium">Estado</th>
-                    {userWorkTeam && <th className="text-left py-3 px-4 font-medium">Marcar como</th>}
+                    {isEncargado && <th className="text-left py-3 px-4 font-medium">Marcar como</th>}
                     <th className="text-left py-3 px-4 font-medium">Acciones</th>
                   </tr>
                 </thead>
@@ -440,8 +524,8 @@ export default function ReservasPage() {
                       className="w-full sm:w-64 h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
                       <option value="">Seleccionar insumo</option>
-                      {itemKeys.filter((key) => !items.some((i, iIndex) => i.item === key && iIndex !== index)).map((key) => (
-                        <option key={key} value={key}>{inventoryLabels[key]}</option>
+                      {supplies.filter((s) => !items.some((i, iIndex) => i.item === s.id && iIndex !== index)).map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
                       ))}
                     </select>
                     <Input
@@ -508,9 +592,9 @@ export default function ReservasPage() {
                       className="w-full sm:w-64 h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
                       <option value="">Seleccionar insumo</option>
-                      {itemKeys.filter((key) => !requestItems.some((i, iIndex) => i.item === key && iIndex !== index)).map((key) => (
-                        <option key={key} value={key}>{inventoryLabels[key]}</option>
-                      ))}
+                      {supplies.filter((s) => !requestItems.some((i, iIndex) => i.item === s.id && iIndex !== index)).map((s) => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+                        ))}
                     </select>
                     <Input
                       type="number"
@@ -681,7 +765,7 @@ export default function ReservasPage() {
                 <div className="mt-2 space-y-2">
                   {detailReservation.items.map((item, i) => (
                     <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                      <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                      <span>{getItemLabel(item.item, supplies)}</span>
                       <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
                     </div>
                   ))}
@@ -693,7 +777,7 @@ export default function ReservasPage() {
                   <div className="mt-2 space-y-2">
                     {detailReservation.receivedItems.map((item, i) => (
                       <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                        <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                        <span>{getItemLabel(item.item, supplies)}</span>
                         <Badge variant="default" className="bg-green-500">Recibido: {item.quantity}</Badge>
                       </div>
                     ))}
@@ -718,7 +802,7 @@ export default function ReservasPage() {
               <div className="space-y-2">
                 {receivedItems.map((item, index) => (
                   <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-muted rounded">
-                    <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                    <span>{getItemLabel(item.item, supplies)}</span>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -803,7 +887,7 @@ export default function ReservasPage() {
                           const hasDifference = requestedItem && requestedItem.quantity !== item.quantity
                           return (
                             <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                              <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                              <span>{getItemLabel(item.item, supplies)}</span>
                               <div className="flex items-center gap-2">
                                 {hasDifference && (
                                   <span className="text-xs text-muted-foreground line-through">
@@ -835,7 +919,7 @@ export default function ReservasPage() {
                             if (approved && approved.quantity === item.quantity) return null
                             return (
                               <div key={i} className="flex justify-between items-center p-2 bg-muted rounded opacity-60">
-                                <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                                <span>{getItemLabel(item.item, supplies)}</span>
                                 <Badge variant="secondary">Solicitado: {item.quantity}</Badge>
                               </div>
                             )
@@ -851,7 +935,7 @@ export default function ReservasPage() {
                   <div className="mt-2 space-y-2">
                     {selectedRequest.items.map((item, i) => (
                       <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                        <span>{inventoryLabels[item.item as keyof GroupInventory]}</span>
+                        <span>{getItemLabel(item.item, supplies)}</span>
                         <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
                       </div>
                     ))}

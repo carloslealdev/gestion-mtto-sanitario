@@ -34,6 +34,36 @@ export const fetchReservations = createAsyncThunk("reservations/fetch", async ()
   return reservationsService.getAllReservations()
 })
 
+export const addReservationAsync = createAsyncThunk(
+  "reservations/addReservationAsync",
+  async (payload: { team: Reservation["team"]; items: ReservationItem[] }) => {
+    const newReservation: Omit<Reservation, "id"> = {
+      team: payload.team,
+      items: payload.items,
+      createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+      status: "pendiente",
+    }
+    const id = await reservationsService.createReservation(newReservation)
+    return { ...newReservation, id }
+  }
+)
+
+export const updateReservationStatusAsync = createAsyncThunk(
+  "reservations/updateStatusAsync",
+  async (payload: { id: string; status: ReservationStatus }) => {
+    await reservationsService.updateReservationStatus(payload.id, payload.status)
+    return payload
+  }
+)
+
+export const setReceivedItemsAsync = createAsyncThunk(
+  "reservations/setReceivedItemsAsync",
+  async (payload: { id: string; receivedItems: ReservationItem[] }) => {
+    await reservationsService.setReceivedItems(payload.id, payload.receivedItems)
+    return payload
+  }
+)
+
 const reservationsSlice = createSlice({
   name: "reservations",
   initialState,
@@ -83,6 +113,21 @@ const reservationsSlice = createSlice({
       .addCase(fetchReservations.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar reservas"
+      })
+      .addCase(addReservationAsync.fulfilled, (state, action) => {
+        state.reservations.unshift(action.payload)
+      })
+      .addCase(updateReservationStatusAsync.fulfilled, (state, action) => {
+        const reservation = state.reservations.find((r) => r.id === action.payload.id)
+        if (reservation) {
+          reservation.status = action.payload.status
+        }
+      })
+      .addCase(setReceivedItemsAsync.fulfilled, (state, action) => {
+        const reservation = state.reservations.find((r) => r.id === action.payload.id)
+        if (reservation) {
+          reservation.receivedItems = action.payload.receivedItems
+        }
       })
   },
 })

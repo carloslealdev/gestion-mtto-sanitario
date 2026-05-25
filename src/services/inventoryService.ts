@@ -43,3 +43,22 @@ export async function updateInventoryItem(
   }
   await setDocument(COLLECTION, groupId, { groupId, items })
 }
+
+export async function addItemsToInventory(
+  groupId: string,
+  newItems: { item: string; quantity: number }[]
+): Promise<GroupInventoryData> {
+  const existing = await getInventory(groupId)
+  if (!existing) throw new Error("Inventory not found")
+  const items = [...existing.items]
+  for (const { item, quantity } of newItems) {
+    const idx = items.findIndex((i) => i.item === item)
+    if (idx >= 0) {
+      items[idx] = { ...items[idx], quantity: Math.max(0, items[idx].quantity + quantity) }
+    } else {
+      items.push({ item, quantity: Math.max(0, quantity) })
+    }
+  }
+  await setDocument(COLLECTION, groupId, { groupId, items })
+  return { groupId, items }
+}

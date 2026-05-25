@@ -67,6 +67,15 @@ export const deleteGroupInventoryAsync = createAsyncThunk(
   }
 )
 
+export const addItemsToInventoryAsync = createAsyncThunk(
+  "inventory/addItemsAsync",
+  async (payload: { team: string; items: { item: string; quantity: number }[] }) => {
+    const { team, items } = payload
+    await inventoryService.addItemsToInventory(team, items)
+    return payload
+  }
+)
+
 const inventorySlice = createSlice({
   name: "inventory",
   initialState,
@@ -128,6 +137,18 @@ const inventorySlice = createSlice({
       })
       .addCase(deleteGroupInventoryAsync.fulfilled, (state, action) => {
         delete state.inventory[action.payload]
+      })
+      .addCase(addItemsToInventoryAsync.fulfilled, (state, action) => {
+        const { team, items } = action.payload
+        if (!state.inventory[team]) {
+          state.inventory[team] = {}
+        }
+        for (const { item, quantity } of items) {
+          if (!state.inventory[team][item]) {
+            state.inventory[team][item] = { quantity: 0 }
+          }
+          state.inventory[team][item].quantity += quantity
+        }
       })
   },
 })
