@@ -34,6 +34,45 @@ export const fetchEPPRequests = createAsyncThunk("eppRequests/fetch", async () =
   return eppRequestsService.getAllEPPRequests()
 })
 
+export const addEPPRequestAsync = createAsyncThunk(
+  "eppRequests/addAsync",
+  async (payload: { workerCedula: string; workerName: string; items: EPPRequestItem[] }) => {
+    const newRequest: Omit<EPPReservationRequest, "id"> = {
+      workerCedula: payload.workerCedula,
+      workerName: payload.workerName,
+      items: payload.items,
+      createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+      status: "pendiente",
+    }
+    const id = await eppRequestsService.createEPPRequest(newRequest)
+    return { ...newRequest, id }
+  }
+)
+
+export const updateEPPRequestStatusAsync = createAsyncThunk(
+  "eppRequests/updateStatusAsync",
+  async (payload: { id: string; status: EPPReservationRequest["status"] }) => {
+    await eppRequestsService.updateEPPRequestStatus(payload.id, payload.status)
+    return payload
+  }
+)
+
+export const setEPPApprovedItemsAsync = createAsyncThunk(
+  "eppRequests/setApprovedItemsAsync",
+  async (payload: { id: string; approvedItems: EPPRequestItem[] }) => {
+    await eppRequestsService.setEPPApprovedItems(payload.id, payload.approvedItems)
+    return payload
+  }
+)
+
+export const approveEPPRequestAsync = createAsyncThunk(
+  "eppRequests/approveAsync",
+  async (payload: { id: string; items: EPPRequestItem[]; approvedItems: EPPRequestItem[] }) => {
+    await eppRequestsService.approveEPPRequest(payload.id, payload.items, payload.approvedItems)
+    return payload
+  }
+)
+
 const eppRequestsSlice = createSlice({
   name: "eppRequests",
   initialState,
@@ -84,6 +123,29 @@ const eppRequestsSlice = createSlice({
       .addCase(fetchEPPRequests.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar solicitudes EPP"
+      })
+      .addCase(addEPPRequestAsync.fulfilled, (state, action) => {
+        state.requests.unshift(action.payload)
+      })
+      .addCase(updateEPPRequestStatusAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.status = action.payload.status
+        }
+      })
+      .addCase(setEPPApprovedItemsAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.approvedItems = action.payload.approvedItems
+        }
+      })
+      .addCase(approveEPPRequestAsync.fulfilled, (state, action) => {
+        const request = state.requests.find((r) => r.id === action.payload.id)
+        if (request) {
+          request.status = "aprobada"
+          request.items = action.payload.items
+          request.approvedItems = action.payload.approvedItems
+        }
       })
   },
 })

@@ -1,4 +1,4 @@
-import { getAllDocuments, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
 import type { EPPReservation, EPPReservationStatus, EPPReservationItem } from "@/store/slices/eppReservationsSlice"
 
 const COLLECTION = "eppReservations"
@@ -12,9 +12,13 @@ export async function createEPPReservation(data: Omit<EPPReservation, "id">): Pr
 }
 
 export async function updateEPPReservationStatus(id: string, status: EPPReservationStatus): Promise<void> {
-  await setDocument(COLLECTION, id, { status })
+  const existing = await getDocument<EPPReservation>(COLLECTION, id)
+  if (!existing) throw new Error("EPP reservation not found")
+  await setDocument(COLLECTION, id, { ...existing, status })
 }
 
 export async function setEPPReceivedItems(id: string, receivedItems: EPPReservationItem[]): Promise<void> {
-  await setDocument(COLLECTION, id, { receivedItems })
+  const existing = await getDocument<EPPReservation>(COLLECTION, id)
+  if (!existing) throw new Error("EPP reservation not found")
+  await setDocument(COLLECTION, id, { ...existing, receivedItems })
 }

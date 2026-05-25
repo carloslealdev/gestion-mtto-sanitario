@@ -193,7 +193,7 @@ export default function GestionEPPSPage() {
                   ).map((eppKey) => {
                     const epp = worker.epps[eppKey];
                     const label = staticEppLabels[eppKey]
-                      ?? eppTypes.find((et) => eppNameToKey(et.name) === eppKey)?.name
+                      ?? eppTypes.find((et) => et.code === eppKey)?.name
                       ?? eppKey;
                     const Icon = staticEppIcons[eppKey] ?? Shield;
                     return (

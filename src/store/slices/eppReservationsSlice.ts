@@ -36,6 +36,37 @@ export const fetchEPPReservations = createAsyncThunk("eppReservations/fetch", as
   return eppReservationsService.getAllEPPReservations()
 })
 
+export const addEPPReservationAsync = createAsyncThunk(
+  "eppReservations/addAsync",
+  async (payload: { workerCedula: string; workerName: string; items: EPPReservationItem[] }) => {
+    const newReservation: Omit<EPPReservation, "id"> = {
+      workerCedula: payload.workerCedula,
+      workerName: payload.workerName,
+      items: payload.items,
+      createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
+      status: "pendiente",
+    }
+    const id = await eppReservationsService.createEPPReservation(newReservation)
+    return { ...newReservation, id }
+  }
+)
+
+export const updateEPPReservationStatusAsync = createAsyncThunk(
+  "eppReservations/updateStatusAsync",
+  async (payload: { id: string; status: EPPReservationStatus }) => {
+    await eppReservationsService.updateEPPReservationStatus(payload.id, payload.status)
+    return payload
+  }
+)
+
+export const setEPPReceivedItemsAsync = createAsyncThunk(
+  "eppReservations/setReceivedItemsAsync",
+  async (payload: { id: string; receivedItems: EPPReservationItem[] }) => {
+    await eppReservationsService.setEPPReceivedItems(payload.id, payload.receivedItems)
+    return payload
+  }
+)
+
 const eppReservationsSlice = createSlice({
   name: "eppReservations",
   initialState,
@@ -86,6 +117,21 @@ const eppReservationsSlice = createSlice({
       .addCase(fetchEPPReservations.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al cargar reservas EPP"
+      })
+      .addCase(addEPPReservationAsync.fulfilled, (state, action) => {
+        state.reservations.unshift(action.payload)
+      })
+      .addCase(updateEPPReservationStatusAsync.fulfilled, (state, action) => {
+        const reservation = state.reservations.find((r) => r.id === action.payload.id)
+        if (reservation) {
+          reservation.status = action.payload.status
+        }
+      })
+      .addCase(setEPPReceivedItemsAsync.fulfilled, (state, action) => {
+        const reservation = state.reservations.find((r) => r.id === action.payload.id)
+        if (reservation) {
+          reservation.receivedItems = action.payload.receivedItems
+        }
       })
   },
 })

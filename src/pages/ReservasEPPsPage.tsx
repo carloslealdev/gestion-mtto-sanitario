@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
+import Swal from "sweetalert2"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addEPPReservation, updateEPPReservationStatus, setEPPReceivedItems, type EPPReservationItem, type EPPReservationStatus } from "@/store/slices/eppReservationsSlice"
-import { addEPPRequest, updateEPPRequestStatus, setEPPApprovedItems, type EPPRequestItem } from "@/store/slices/eppRequestsSlice"
-import { updateWorkerEPP } from "@/store/slices/workersSlice"
+import { addEPPReservation, addEPPReservationAsync, fetchEPPReservations, updateEPPReservationStatusAsync, setEPPReceivedItemsAsync, type EPPReservationItem, type EPPReservationStatus } from "@/store/slices/eppReservationsSlice"
+import { addEPPRequestAsync, fetchEPPRequests, approveEPPRequestAsync, updateEPPRequestStatusAsync, type EPPRequestItem } from "@/store/slices/eppRequestsSlice"
+import { updateWorkerEPP, updateWorkerEPPAsync } from "@/store/slices/workersSlice"
+import { fetchEPPTypes, type EPPType } from "@/store/slices/eppTypesSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -84,6 +86,14 @@ export default function ReservasEPPsPage() {
   const [isEPPFromRequest, setIsEPPFromRequest] = useState(false)
   const [approvedEPPRequestId, setApprovedEPPRequestId] = useState<string | null>(null)
 
+  const eppTypes = useAppSelector((state) => state.eppTypes.eppTypes)
+
+  useEffect(() => {
+    dispatch(fetchEPPReservations())
+    dispatch(fetchEPPRequests())
+    dispatch(fetchEPPTypes())
+  }, [dispatch])
+
   const isAdmin = user?.role === "admin"
   const isEncargado = user?.role === "encargado"
   const isGeneral = user?.role === "general"
@@ -133,37 +143,55 @@ export default function ReservasEPPsPage() {
     setFormItems(newItems)
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const validItems = formItems.filter((item) => item.epp !== "" && item.quantity > 0)
     if (validItems.length === 0) return
 
     const uniqueItems = validItems.reduce((acc, item) => {
       if (!acc.find((i) => i.epp === item.epp)) {
-        acc.push({
+        const entry: EPPReservationItem = {
           epp: item.epp as EPPReservationItem["epp"],
           quantity: item.quantity,
-          talla: item.talla || undefined,
-        })
+        }
+        if (item.talla) {
+          entry.talla = item.talla
+        }
+        acc.push(entry)
       }
       return acc
     }, [] as EPPReservationItem[])
 
-    if (isEPPFromRequest && approvedEPPRequestId) {
-      dispatch(setEPPApprovedItems({ id: approvedEPPRequestId, approvedItems: uniqueItems as EPPRequestItem[] }))
-    }
+    if (!selectedWorker) return
 
-    if (selectedWorker) {
-      dispatch(addEPPReservation({
+    try {
+      if (isEPPFromRequest && approvedEPPRequestId) {
+        await dispatch(approveEPPRequestAsync({ id: approvedEPPRequestId, items: uniqueItems as EPPRequestItem[], approvedItems: uniqueItems as EPPRequestItem[] })).unwrap()
+      }
+
+      await dispatch(addEPPReservationAsync({
         workerCedula: selectedWorker.cedula,
         workerName: `${selectedWorker.firstName} ${selectedWorker.lastName}`,
         items: uniqueItems,
-      }))
+      })).unwrap()
+
+      Swal.fire({
+        icon: "success",
+        title: "Reserva generada",
+        text: `Reserva de EPPs para ${selectedWorker.firstName} ${selectedWorker.lastName} creada exitosamente.`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+
+      setFormItems([])
+      setWorkerCedula("")
+      setWorkerCedulaError("")
+      setShowForm(false)
+      setIsEPPFromRequest(false)
+      setApprovedEPPRequestId(null)
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la reserva en la base de datos" })
     }
-    setFormItems([])
-    setWorkerCedula("")
-    setShowForm(false)
-    setIsEPPFromRequest(false)
-    setApprovedEPPRequestId(null)
   }
 
   const handleAddRequestItem = () => {
@@ -190,29 +218,44 @@ export default function ReservasEPPsPage() {
     setRequestItems(newItems)
   }
 
-  const handleGenerateRequest = () => {
+  const handleGenerateRequest = async () => {
     if (!userWorker) return
     const validItems = requestItems.filter((item) => item.epp !== "" && item.quantity > 0)
     if (validItems.length === 0) return
 
     const uniqueItems = validItems.reduce((acc, item) => {
       if (!acc.find((i) => i.epp === item.epp)) {
-        acc.push({
+        const entry: EPPRequestItem = {
           epp: item.epp as EPPRequestItem["epp"],
           quantity: item.quantity,
-          talla: item.talla || undefined,
-        })
+        }
+        if (item.talla) {
+          entry.talla = item.talla
+        }
+        acc.push(entry)
       }
       return acc
     }, [] as EPPRequestItem[])
 
-    dispatch(addEPPRequest({
-      workerCedula: userWorker.cedula,
-      workerName: `${userWorker.firstName} ${userWorker.lastName}`,
-      items: uniqueItems,
-    }))
-    setRequestItems([])
-    setShowRequestForm(false)
+    try {
+      await dispatch(addEPPRequestAsync({
+        workerCedula: userWorker.cedula,
+        workerName: `${userWorker.firstName} ${userWorker.lastName}`,
+        items: uniqueItems,
+      })).unwrap()
+      Swal.fire({
+        icon: "success",
+        title: "Solicitud enviada",
+        text: "Solicitud de EPPs creada exitosamente.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+      setRequestItems([])
+      setShowRequestForm(false)
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la solicitud en la base de datos" })
+    }
   }
 
   const handleApproveEPPRequest = (id: string) => {
@@ -223,39 +266,66 @@ export default function ReservasEPPsPage() {
       setShowForm(true)
       setIsEPPFromRequest(true)
       setApprovedEPPRequestId(id)
-      dispatch(updateEPPRequestStatus({ id, status: "aprobada" }))
     }
     setSelectedEPPRequest(null)
   }
 
-  const handleRejectEPPRequest = (id: string) => {
-    dispatch(updateEPPRequestStatus({ id, status: "rechazada" }))
+  const handleRejectEPPRequest = async (id: string) => {
+    try {
+      await dispatch(updateEPPRequestStatusAsync({ id, status: "rechazada" })).unwrap()
+      Swal.fire({
+        icon: "success",
+        title: "Solicitud rechazada",
+        text: "La solicitud de EPPs ha sido rechazada.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo rechazar la solicitud" })
+    }
     setSelectedEPPRequest(null)
   }
 
-  const handleStatusChange = (id: string, status: EPPReservationStatus) => {
+  const handleStatusChange = async (id: string, status: EPPReservationStatus) => {
+    const reservation = reservations.find((r) => r.id === id)
+    if (!reservation) return
+
     if (status === "retirada_parcial") {
-      const reservation = reservations.find((r) => r.id === id)
-      if (reservation) {
-        setPartialReceiveModal({ id, items: [...reservation.items] })
-        setReceivedItemsLocal([...reservation.items])
-      }
-    } else if (status === "retirada_completa") {
-      const reservation = reservations.find((r) => r.id === id)
-      if (reservation) {
+      setPartialReceiveModal({ id, items: [...reservation.items] })
+      setReceivedItemsLocal([...reservation.items])
+      return
+    }
+
+    try {
+      if (status === "retirada_completa") {
         const now = new Date().toISOString()
         const threeMonthsLater = new Date()
         threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
-        const eppUpdates = reservation.items.map((item) => ({
-          epp: item.epp as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
-          lastRenewal: now,
-          nextRenewal: threeMonthsLater.toISOString(),
-        }))
-        dispatch(updateWorkerEPP({ cedula: reservation.workerCedula, epps: eppUpdates }))
-        dispatch(updateEPPReservationStatus({ id, status }))
+        const eppUpdates = reservation.items.map((item) => {
+          const eppType = eppTypes.find((t) => t.id === item.epp || t.code === item.epp)
+          return {
+            id: eppType?.id || item.epp,
+            epp: (eppType?.code || item.epp) as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
+            lastRenewal: now,
+            nextRenewal: threeMonthsLater.toISOString(),
+          }
+        })
+        await dispatch(updateWorkerEPPAsync({ cedula: reservation.workerCedula, epps: eppUpdates })).unwrap()
       }
-    } else {
-      dispatch(updateEPPReservationStatus({ id, status }))
+
+      await dispatch(updateEPPReservationStatusAsync({ id, status })).unwrap()
+      const label = statusConfig[status]?.label || status
+      Swal.fire({
+        icon: "success",
+        title: "Estado actualizado",
+        text: `Reserva marcada como "${label}".`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar el estado" })
     }
   }
 
@@ -269,28 +339,45 @@ export default function ReservasEPPsPage() {
     setReceivedItemsLocal(newItems)
   }
 
-  const handleFinalizePartialReceive = () => {
-    if (partialReceiveModal && receivedItems.length >= 0) {
+  const handleFinalizePartialReceive = async () => {
+    if (!partialReceiveModal) return
+
+    try {
       const validReceivedItems = receivedItems.filter((item) => item.quantity > 0)
       if (validReceivedItems.length > 0) {
         const now = new Date().toISOString()
         const threeMonthsLater = new Date()
         threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
-        const eppUpdates = validReceivedItems.map((item) => ({
-          epp: item.epp as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
-          lastRenewal: now,
-          nextRenewal: threeMonthsLater.toISOString(),
-        }))
+        const eppUpdates = validReceivedItems.map((item) => {
+          const eppType = eppTypes.find((t) => t.id === item.epp || t.code === item.epp)
+          return {
+            id: eppType?.id || item.epp,
+            epp: (eppType?.code || item.epp) as "casco" | "lentes" | "botas" | "auditivo" | "fullFace",
+            lastRenewal: now,
+            nextRenewal: threeMonthsLater.toISOString(),
+          }
+        })
         const reservation = reservations.find((r) => r.id === partialReceiveModal.id)
         if (reservation) {
-          dispatch(updateWorkerEPP({ cedula: reservation.workerCedula, epps: eppUpdates }))
+          await dispatch(updateWorkerEPPAsync({ cedula: reservation.workerCedula, epps: eppUpdates })).unwrap()
         }
       }
-      dispatch(updateEPPReservationStatus({ id: partialReceiveModal.id, status: "retirada_parcial" }))
-      dispatch(setEPPReceivedItems({ id: partialReceiveModal.id, receivedItems }))
-      setPartialReceiveModal(null)
-      setReceivedItemsLocal([])
+
+      await dispatch(updateEPPReservationStatusAsync({ id: partialReceiveModal.id, status: "retirada_parcial" })).unwrap()
+      await dispatch(setEPPReceivedItemsAsync({ id: partialReceiveModal.id, receivedItems })).unwrap()
+      Swal.fire({
+        icon: "success",
+        title: "Recepción parcial guardada",
+        text: "Los items recibidos se han registrado correctamente.",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la recepción parcial" })
     }
+    setPartialReceiveModal(null)
+    setReceivedItemsLocal([])
   }
 
   const filteredReservations = useMemo(() => {
@@ -322,6 +409,15 @@ export default function ReservasEPPsPage() {
   const isOwnReservation = (cedula: string) => {
     return cedula.replace("V-", "") === userCedulaClean
   }
+
+  const eppOptions = useMemo(() => eppTypes.map((t) => t.code), [eppTypes])
+
+  const getEPPName = useMemo(() => {
+    return (code: string): string => {
+      const found = eppTypes.find((t) => t.code === code)
+      return found?.name || eppLabels[code] || code
+    }
+  }, [eppTypes])
 
   const availableEPPs = eppOptions.filter((key) => !formItems.some((item) => item.epp === key))
 
@@ -514,7 +610,7 @@ export default function ReservasEPPsPage() {
                     >
                       <option value="">Seleccionar EPP</option>
                       {eppOptions.filter((key) => !formItems.some((existingItem, existingIndex) => existingItem.epp === key && existingIndex !== index)).map((key) => (
-                        <option key={key} value={key}>{eppLabels[key]}</option>
+                        <option key={key} value={key}>{getEPPName(key)}</option>
                       ))}
                     </select>
                     {item.epp === "botas" && (
@@ -590,7 +686,7 @@ export default function ReservasEPPsPage() {
                     >
                       <option value="">Seleccionar EPP</option>
                       {eppOptions.filter((key) => !requestItems.some((existingItem, existingIndex) => existingItem.epp === key && existingIndex !== index)).map((key) => (
-                        <option key={key} value={key}>{eppLabels[key]}</option>
+                        <option key={key} value={key}>{getEPPName(key)}</option>
                       ))}
                     </select>
                     {item.epp === "botas" && (
@@ -809,7 +905,7 @@ export default function ReservasEPPsPage() {
                 <div className="mt-2 space-y-2">
                   {detailData.items.map((item, i) => (
                     <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                      <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                      <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                       <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
                     </div>
                   ))}
@@ -821,7 +917,7 @@ export default function ReservasEPPsPage() {
                   <div className="mt-2 space-y-2">
                     {detailData.receivedItems.map((item, i) => (
                       <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                        <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                        <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                         <Badge variant="default" className="bg-green-500">Recibido: {item.quantity}</Badge>
                       </div>
                     ))}
@@ -846,7 +942,7 @@ export default function ReservasEPPsPage() {
               <div className="space-y-2">
                 {receivedItems.map((item, index) => (
                   <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-muted rounded">
-                    <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                    <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -932,7 +1028,7 @@ export default function ReservasEPPsPage() {
                           const hasDifference = requestedItem && (requestedItem.quantity !== item.quantity || requestedItem.talla !== item.talla)
                           return (
                             <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                              <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                              <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                               <div className="flex items-center gap-2">
                                 {hasDifference && (
                                   <span className="text-xs text-muted-foreground line-through">
@@ -964,7 +1060,7 @@ export default function ReservasEPPsPage() {
                             if (approved && approved.quantity === item.quantity && approved.talla === item.talla) return null
                             return (
                               <div key={i} className="flex justify-between items-center p-2 bg-muted rounded opacity-60">
-                                <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                                <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                                 <Badge variant="secondary">Solicitado: {item.quantity}</Badge>
                               </div>
                             )
@@ -980,7 +1076,7 @@ export default function ReservasEPPsPage() {
                   <div className="mt-2 space-y-2">
                     {selectedEPPRequest.items.map((item, i) => (
                       <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                        <span>{eppLabels[item.epp]}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
+                        <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
                         <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
                       </div>
                     ))}

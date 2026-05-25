@@ -13,6 +13,7 @@ export interface WorkerUpdate {
 }
 
 export interface EPPUpdateEntry {
+  id: string
   epp: keyof EPPs
   lastRenewal: string
   nextRenewal: string
@@ -99,6 +100,30 @@ export const updateFullWorkerAsync = createAsyncThunk(
   }
 )
 
+export const updateWorkerEPPAsync = createAsyncThunk(
+  "workers/updateEPPAsync",
+  async (payload: WorkerEPPUpdate) => {
+    const existing = await workersService.getWorker(payload.cedula)
+    if (!existing) throw new Error("Worker not found")
+    if (!existing.epps) return payload
+
+    const newEpps = { ...existing.epps } as Record<string, any>
+    for (const epp of payload.epps) {
+      let key = Object.keys(newEpps).find((k) => newEpps[k]?.id === epp.id)
+      if (!key) key = newEpps[epp.epp] ? epp.epp : undefined
+      if (!key) key = Object.keys(newEpps).find((k) => k.includes(epp.epp))
+      if (!key) continue
+      newEpps[key] = {
+        ...newEpps[key],
+        lastRenewal: epp.lastRenewal,
+        nextRenewal: epp.nextRenewal,
+      }
+    }
+    await workersService.updateWorker(payload.cedula, { epps: newEpps })
+    return payload
+  }
+)
+
 export const deleteWorkerAsync = createAsyncThunk(
   "workers/deleteWorkerAsync",
   async (cedula: string) => {
@@ -131,11 +156,12 @@ const workersSlice = createSlice({
       const worker = state.workers.find((w) => w.cedula === cedula)
       if (worker) {
         epps.forEach((eppUpdate) => {
-          if (worker.epps[eppUpdate.epp]) {
-            worker.epps[eppUpdate.epp].lastRenewal = eppUpdate.lastRenewal
-            worker.epps[eppUpdate.epp].nextRenewal = eppUpdate.nextRenewal
+          const key = Object.keys(worker.epps).find((k) => (worker.epps as any)[k]?.id === eppUpdate.id) || eppUpdate.epp
+          if (worker.epps[key]) {
+            worker.epps[key].lastRenewal = eppUpdate.lastRenewal
+            worker.epps[key].nextRenewal = eppUpdate.nextRenewal
             if (eppUpdate.notOwned !== undefined) {
-              worker.epps[eppUpdate.epp].notOwned = eppUpdate.notOwned
+              worker.epps[key].notOwned = eppUpdate.notOwned
             }
           }
         })
@@ -209,6 +235,22 @@ const workersSlice = createSlice({
       .addCase(updateFullWorkerAsync.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message || "Error al actualizar trabajador"
+      })
+      .addCase(updateWorkerEPPAsync.fulfilled, (state, action) => {
+        const { cedula, epps } = action.payload
+        const worker = state.workers.find((w) => w.cedula === cedula)
+        if (worker) {
+          epps.forEach((eppUpdate) => {
+            const key = Object.keys(worker.epps).find((k) => (worker.epps as any)[k]?.id === eppUpdate.id) || eppUpdate.epp
+            if (worker.epps[key]) {
+              worker.epps[key].lastRenewal = eppUpdate.lastRenewal
+              worker.epps[key].nextRenewal = eppUpdate.nextRenewal
+              if (eppUpdate.notOwned !== undefined) {
+                worker.epps[key].notOwned = eppUpdate.notOwned
+              }
+            }
+          })
+        }
       })
       .addCase(deleteWorkerAsync.pending, (state) => {
         state.loading = true

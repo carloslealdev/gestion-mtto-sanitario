@@ -132,7 +132,8 @@ export async function createUserWithoutSignIn(
   // Step 2: user doesn't exist in Auth → create a new one
   if (
     signInData.error?.message === "EMAIL_NOT_FOUND" ||
-    signInData.error?.message === "USER_NOT_FOUND"
+    signInData.error?.message === "USER_NOT_FOUND" ||
+    signInData.error?.message === "INVALID_LOGIN_CREDENTIALS"
   ) {
     const res = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
@@ -143,23 +144,52 @@ export async function createUserWithoutSignIn(
       }
     )
     const data = await res.json()
-    if (!res.ok) {
-      throw new Error(data.error?.message || "Error al crear usuario en Firebase Auth")
+    if (res.ok) {
+      const uid: string = data.localId
+      const profile: UserProfile = {
+        uid,
+        cedula: cleanCedula,
+        name,
+        role,
+        email,
+        username: cleanCedula,
+        password: hashPassword(password),
+        createdAt: new Date().toISOString(),
+      }
+      await setDocument("users", uid, profile)
+      return { uid, email }
     }
 
-    const uid: string = data.localId
-    const profile: UserProfile = {
-      uid,
-      cedula: cleanCedula,
-      name,
-      role,
-      email,
-      username: cleanCedula,
-      password: hashPassword(password),
-      createdAt: new Date().toISOString(),
+    // Step 2b: email exists → user was deleted from Firestore but still in Auth
+    if (data.error?.message === "EMAIL_EXISTS") {
+      // Try to sign in with the provided password to verify ownership
+      const retryRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, returnSecureToken: true }),
+        }
+      )
+      const retryData = await retryRes.json()
+      if (retryRes.ok) {
+        const uid: string = retryData.localId
+        const profile: UserProfile = {
+          uid,
+          cedula: cleanCedula,
+          name,
+          role,
+          email,
+          username: cleanCedula,
+          password: hashPassword(password),
+          createdAt: new Date().toISOString(),
+        }
+        await setDocument("users", uid, profile)
+        return { uid, email }
+      }
     }
-    await setDocument("users", uid, profile)
-    return { uid, email }
+
+    throw new Error(data.error?.message || "Error al crear usuario en Firebase Auth")
   }
 
   // Step 3: user exists but password doesn't match

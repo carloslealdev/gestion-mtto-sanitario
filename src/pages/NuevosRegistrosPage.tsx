@@ -96,7 +96,7 @@ interface TrabajadorForm {
   workTeam: WorkTeam;
   role: WorkerRole;
   password: string;
-  epps: Record<string, { lastRenewal: string; notOwned: boolean }>;
+  epps: Record<string, { id: string; lastRenewal: string; notOwned: boolean }>;
 }
 
 const generatePassword = () => {
@@ -111,11 +111,10 @@ const generatePassword = () => {
 
 function buildEmptyEpps(
   eppTypes: EPPType[],
-): Record<string, { lastRenewal: string; notOwned: boolean }> {
-  const epps: Record<string, { lastRenewal: string; notOwned: boolean }> = {};
+): Record<string, { id: string; lastRenewal: string; notOwned: boolean }> {
+  const epps: Record<string, { id: string; lastRenewal: string; notOwned: boolean }> = {};
   for (const epp of eppTypes) {
-    const key = eppNameToKey(epp.name);
-    epps[key] = { lastRenewal: '', notOwned: false };
+    epps[epp.code] = { id: epp.id, lastRenewal: '', notOwned: true };
   }
   return epps;
 }
@@ -160,16 +159,17 @@ function TrabajadoresSection() {
     if (!w) return;
     setEditingCedula(cedula);
     setSaveError(null);
-    const epps: Record<string, { lastRenewal: string; notOwned: boolean }> = {};
+    const workerEpps = w.epps as unknown as Record<
+      string,
+      { id?: string; lastRenewal?: string; nextRenewal?: string; notOwned?: boolean }
+    >;
+    const epps: Record<string, { id: string; lastRenewal: string; notOwned: boolean }> = {};
     for (const epp of eppTypes) {
-      const key = eppNameToKey(epp.name);
-      const e = (
-        w.epps as unknown as Record<
-          string,
-          { lastRenewal?: string; nextRenewal?: string; notOwned?: boolean }
-        >
-      )[key];
+      const key = epp.code;
+      const legacyKey = eppNameToKey(epp.name);
+      const e = workerEpps[key] || workerEpps[legacyKey];
       epps[key] = {
+        id: epp.id,
         lastRenewal: e?.notOwned ? '' : formatDate(e?.lastRenewal || ''),
         notOwned: e?.notOwned || false,
       };
@@ -196,13 +196,13 @@ function TrabajadoresSection() {
 
     const eppsData: Record<
       string,
-      { lastRenewal: string; nextRenewal: string; notOwned: boolean }
+      { id: string; lastRenewal: string; nextRenewal: string; notOwned: boolean }
     > = {};
     for (const epp of eppTypes) {
-      const key = eppNameToKey(epp.name);
+      const key = epp.code;
       const f = form.epps[key];
       if (f?.notOwned) {
-        eppsData[key] = { lastRenewal: '', nextRenewal: '', notOwned: true };
+        eppsData[key] = { id: epp.id, lastRenewal: '', nextRenewal: '', notOwned: true };
       } else {
         const lastRenewal = f?.lastRenewal
           ? isoFromDate(f.lastRenewal)
@@ -210,6 +210,7 @@ function TrabajadoresSection() {
         const d = new Date(lastRenewal);
         d.setMonth(d.getMonth() + epp.renewalTime);
         eppsData[key] = {
+          id: epp.id,
           lastRenewal,
           nextRenewal: d.toISOString(),
           notOwned: false,
@@ -493,7 +494,7 @@ function TrabajadoresSection() {
               )}
               <div className='space-y-3'>
                 {eppTypes.map((eppType) => {
-                  const key = eppNameToKey(eppType.name);
+                  const key = eppType.code;
                   const epp = form.epps[key] ?? { lastRenewal: "", notOwned: false };
                   return (
                     <div
