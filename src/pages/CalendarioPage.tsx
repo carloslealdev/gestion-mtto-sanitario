@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Swal from "sweetalert2"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -51,7 +51,12 @@ import {
   Plus,
   Wrench,
   X,
+  Package,
 } from "lucide-react"
+import {
+  computeEstimatedConsumption,
+  setEstimatedConsumption as saveEstimatedConsumptionToFirestore,
+} from "@/services/estimatedConsumptionService"
 
 let maintenanceIdCounter = 0
 const generateMaintenanceId = (lineId: number) => {
@@ -460,10 +465,43 @@ export default function CalendarioPage() {
 
   const [nightlyScopeItems, setNightlyScopeItems] = useState<NightlyScopeItem[]>([])
   const [showReportModal, setShowReportModal] = useState(false)
+  const [activeConsumptionTab, setActiveConsumptionTab] = useState<string>("")
 
   useEffect(() => {
     getNightlyScope(todayKey).then(setNightlyScopeItems)
   }, [todayKey])
+
+  const estimatedConsumption = useMemo(
+    () =>
+      computeEstimatedConsumption(
+        taskAssignments,
+        todayMaintenances,
+        nightlyScopeItems,
+        productionLines
+      ),
+    [taskAssignments, nightlyScopeItems, todayMaintenances, productionLines]
+  )
+
+  useEffect(() => {
+    saveEstimatedConsumptionToFirestore(todayKey, { dateKey: todayKey, groups: estimatedConsumption }).catch(() => {})
+  }, [estimatedConsumption, todayKey])
+
+  const currentUserTeam = useMemo(() => {
+    if (!user) return null
+    const cleanCedula = user.username
+    const worker = allWorkers.find((w) => w.cedula.replace("V-", "") === cleanCedula)
+    return worker?.workTeam ?? null
+  }, [user, allWorkers])
+
+  const visibleConsumption = useMemo(() => {
+    if (user?.role === "admin") return estimatedConsumption
+    if (currentUserTeam) {
+      return estimatedConsumption.filter((g) => g.team === currentUserTeam)
+    }
+    return []
+  }, [estimatedConsumption, user, currentUserTeam])
+
+  const activeConsumptionTabValue = activeConsumptionTab || visibleConsumption[0]?.team || ""
 
   const handleLoadReport = async (report: NightlyTaskReport) => {
     const items = report.equipment.map((eq) => ({
@@ -622,7 +660,7 @@ export default function CalendarioPage() {
                   <div className="flex-1">
                     <span className="font-medium">{normalizeName(item.machineName)}</span>
                     <span className="text-muted-foreground text-xs ml-2">
-                      - {item.lineName} - {teamLabels[item.team]}
+                      - {item.lineName} - {teamLabels[item.team as WorkTeam]}
                     </span>
                   </div>
                   {isAdmin && (
@@ -728,6 +766,123 @@ export default function CalendarioPage() {
                 </div>
               )}
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Consumo estimado por línea y grupo
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {visibleConsumption.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {user?.role === "admin"
+                ? "No hay datos para calcular consumo estimado. Asigna tareas diurnas o carga alcance nocturno."
+                : "No hay datos de consumo estimado para tu grupo de trabajo."}
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {user?.role === "admin" && (
+              <div className="flex flex-wrap gap-2 border-b">
+                {visibleConsumption.map((group) => (
+                  <button
+                    key={group.team}
+                    onClick={() => setActiveConsumptionTab(group.team)}
+                    className={`px-4 py-2 text-sm font-medium rounded-t border border-b-0 ${
+                      activeConsumptionTabValue === group.team
+                        ? "bg-background border-border text-foreground"
+                        : "bg-muted border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {teamLabels[group.team as WorkTeam] || group.team}
+                  </button>
+                ))}
+              </div>
+              )}
+              {visibleConsumption.map((group) => (
+                <div
+                  key={group.team}
+                  className={activeConsumptionTabValue === group.team ? "" : "hidden"}
+                >
+                  {group.lines.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No hay líneas intervenidas para este grupo.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left p-2 font-medium whitespace-nowrap">Línea</th>
+                            {group.lines.map((line) =>
+                              line.machines.map((machine) => (
+                                <th
+                                  key={machine.machineId}
+                                  className="text-left p-2 font-medium whitespace-nowrap"
+                                >
+                                  {normalizeName(machine.machineName)}
+                                </th>
+                              ))
+                            )}
+                            <th className="text-left p-2 font-medium whitespace-nowrap">
+                              Total línea
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.lines.map((line) => {
+                            const maxMachineCount = Math.max(
+                              ...group.lines.map((l) => l.machines.length)
+                            )
+                            return (
+                              <tr key={line.lineName} className="border-b hover:bg-muted/30">
+                                <td className="p-2 font-medium whitespace-nowrap align-top">
+                                  {line.lineName}
+                                </td>
+                                {Array.from({ length: maxMachineCount }).map((_, colIdx) => {
+                                  const machine = line.machines[colIdx]
+                                  if (!machine) return <td key={colIdx} className="p-2" />
+                                  return (
+                                    <td key={colIdx} className="p-2 align-top">
+                                      <div className="space-y-1">
+                                        {machine.supplies.map((s) => (
+                                          <div
+                                            key={s.supplyName}
+                                            className="text-xs whitespace-nowrap"
+                                          >
+                                            {normalizeName(s.supplyName)}: {s.quantity} {s.unit}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  )
+                                })}
+                                <td className="p-2 align-top">
+                                  <div className="space-y-1">
+                                    {line.totalSupplies.map((s) => (
+                                      <div
+                                        key={s.supplyName}
+                                        className="text-xs whitespace-nowrap font-medium"
+                                      >
+                                        {normalizeName(s.supplyName)}: {s.totalQuantity} {s.unit}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

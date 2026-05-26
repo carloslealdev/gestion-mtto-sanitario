@@ -112,7 +112,10 @@ const generatePassword = () => {
 function buildEmptyEpps(
   eppTypes: EPPType[],
 ): Record<string, { id: string; lastRenewal: string; notOwned: boolean }> {
-  const epps: Record<string, { id: string; lastRenewal: string; notOwned: boolean }> = {};
+  const epps: Record<
+    string,
+    { id: string; lastRenewal: string; notOwned: boolean }
+  > = {};
   for (const epp of eppTypes) {
     epps[epp.code] = { id: epp.id, lastRenewal: '', notOwned: true };
   }
@@ -161,9 +164,17 @@ function TrabajadoresSection() {
     setSaveError(null);
     const workerEpps = w.epps as unknown as Record<
       string,
-      { id?: string; lastRenewal?: string; nextRenewal?: string; notOwned?: boolean }
+      {
+        id?: string;
+        lastRenewal?: string;
+        nextRenewal?: string;
+        notOwned?: boolean;
+      }
     >;
-    const epps: Record<string, { id: string; lastRenewal: string; notOwned: boolean }> = {};
+    const epps: Record<
+      string,
+      { id: string; lastRenewal: string; notOwned: boolean }
+    > = {};
     for (const epp of eppTypes) {
       const key = epp.code;
       const legacyKey = eppNameToKey(epp.name);
@@ -196,13 +207,23 @@ function TrabajadoresSection() {
 
     const eppsData: Record<
       string,
-      { id: string; lastRenewal: string; nextRenewal: string; notOwned: boolean }
+      {
+        id: string;
+        lastRenewal: string;
+        nextRenewal: string;
+        notOwned: boolean;
+      }
     > = {};
     for (const epp of eppTypes) {
       const key = epp.code;
       const f = form.epps[key];
       if (f?.notOwned) {
-        eppsData[key] = { id: epp.id, lastRenewal: '', nextRenewal: '', notOwned: true };
+        eppsData[key] = {
+          id: epp.id,
+          lastRenewal: '',
+          nextRenewal: '',
+          notOwned: true,
+        };
       } else {
         const lastRenewal = f?.lastRenewal
           ? isoFromDate(f.lastRenewal)
@@ -495,7 +516,10 @@ function TrabajadoresSection() {
               <div className='space-y-3'>
                 {eppTypes.map((eppType) => {
                   const key = eppType.code;
-                  const epp = form.epps[key] ?? { lastRenewal: "", notOwned: false };
+                  const epp = form.epps[key] ?? {
+                    lastRenewal: '',
+                    notOwned: false,
+                  };
                   return (
                     <div
                       key={key}
@@ -510,8 +534,14 @@ function TrabajadoresSection() {
                           checked={epp.notOwned}
                           onChange={() => {
                             const updated = { ...form.epps };
-                            const current = updated[key] ?? { lastRenewal: "", notOwned: false };
-                            updated[key] = { ...current, notOwned: !current.notOwned };
+                            const current = updated[key] ?? {
+                              lastRenewal: '',
+                              notOwned: false,
+                            };
+                            updated[key] = {
+                              ...current,
+                              notOwned: !current.notOwned,
+                            };
                             setForm({ ...form, epps: updated });
                           }}
                         />
@@ -528,8 +558,14 @@ function TrabajadoresSection() {
                             value={epp.lastRenewal}
                             onChange={(e) => {
                               const updated = { ...form.epps };
-                              const current = updated[key] ?? { lastRenewal: "", notOwned: false };
-                              updated[key] = { ...current, lastRenewal: e.target.value };
+                              const current = updated[key] ?? {
+                                lastRenewal: '',
+                                notOwned: false,
+                              };
+                              updated[key] = {
+                                ...current,
+                                lastRenewal: e.target.value,
+                              };
                               setForm({ ...form, epps: updated });
                             }}
                           />
@@ -613,7 +649,9 @@ function InsumosSection() {
           showConfirmButton: false,
         });
       } else {
-        await dispatch(addSupplyAsync({ name, code, unit, optimalLevel })).unwrap();
+        await dispatch(
+          addSupplyAsync({ name, code, unit, optimalLevel }),
+        ).unwrap();
         Swal.fire({
           icon: 'success',
           title: 'Insumo creado',
@@ -756,7 +794,7 @@ function InsumosSection() {
               <Input
                 type='number'
                 min={0}
-                value={optimalLevel || ""}
+                value={optimalLevel || ''}
                 onChange={(e) => setOptimalLevel(Number(e.target.value))}
               />
             </div>
@@ -1110,10 +1148,7 @@ function LineasSection() {
   };
 
   const addMachine = () => {
-    setMachines([
-      ...machines,
-      { name: '', machineId: '', supplies: [] },
-    ]);
+    setMachines([...machines, { name: '', machineId: '', supplies: [] }]);
   };
 
   const removeMachine = (idx: number) => {
@@ -1260,7 +1295,11 @@ function LineasSection() {
               </div>
               <div className='space-y-1'>
                 <label className='text-sm font-medium'>ID de la línea *</label>
-                <Input value={generateIdFromName(name)} disabled className='bg-muted' />
+                <Input
+                  value={generateIdFromName(name)}
+                  disabled
+                  className='bg-muted'
+                />
               </div>
             </div>
 
@@ -1297,7 +1336,9 @@ function LineasSection() {
                       </label>
                       <Input
                         value={machine.name}
-                        onChange={(e) => updateMachineName(machineIdx, e.target.value)}
+                        onChange={(e) =>
+                          updateMachineName(machineIdx, e.target.value)
+                        }
                       />
                     </div>
                     <div className='space-y-1'>
@@ -1409,10 +1450,7 @@ function LineasSection() {
             <div className='flex gap-2 pt-2'>
               <Button
                 onClick={handleSave}
-                disabled={
-                  !name ||
-                  machines.every((m) => !m.name)
-                }
+                disabled={!name || machines.every((m) => !m.name)}
               >
                 {editingId ? 'Guardar cambios' : 'Crear línea'}
               </Button>
@@ -1435,7 +1473,7 @@ export default function NuevosRegistrosPage() {
   return (
     <div className='space-y-6'>
       <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Nuevos registros</h1>
+        <h1 className='text-2xl font-bold tracking-tight'>Registros</h1>
         <p className='text-muted-foreground'>
           Gestión de registros maestros del sistema
         </p>
