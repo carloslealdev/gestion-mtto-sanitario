@@ -106,6 +106,7 @@ gestion-mtto-sanitario/
 ## Autenticación
 
 ### Sistema
+
 - **Firebase Auth** con patrón de email interno: `{cedula}@gestion-mtto.app`
 - **Firestore `users/{uid}`** almacena: `email`, `name`, `role`, `username`, `password` (hasheado con bcryptjs)
 - **`initializing: true`** en `authSlice` suprime el flash de login al recargar
@@ -114,11 +115,11 @@ gestion-mtto-sanitario/
 
 ### Roles
 
-| Rol | Acceso |
-|-----|--------|
-| **admin** | Dashboard, Equipos, Mantenimientos, Calendario, Grupos, Inventarios, EPPs, Nuevos Registros, Reservas, Reportes |
+| Rol           | Acceso                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **admin**     | Dashboard, Equipos, Mantenimientos, Calendario, Grupos, Inventarios, EPPs, Nuevos Registros, Reservas, Reportes                 |
 | **encargado** | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo su grupo), Reservas (solicitar), Reportes nocturnos |
-| **general** | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo sus EPPs), Reservas de EPPs (solicitar) |
+| **general**   | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo sus EPPs), Reservas de EPPs (solicitar)             |
 
 ### Credenciales
 
@@ -127,43 +128,46 @@ gestion-mtto-sanitario/
 
 ### Rutas por Rol
 
-| Rol | Ruta Base | Página Inicial |
-|-----|-----------|----------------|
-| admin | `/` | Dashboard |
-| encargado | `/encargado` | Calendario |
-| general | `/general` | Calendario |
+| Rol       | Ruta Base    | Página Inicial |
+| --------- | ------------ | -------------- |
+| admin     | `/`          | Dashboard      |
+| encargado | `/encargado` | Calendario     |
+| general   | `/general`   | Calendario     |
 
 ## Persistencia
 
 **Firebase Firestore** es la fuente de datos principal (sin localStorage):
 
-| Colección | Uso |
-|-----------|-----|
-| `users` | Usuarios y perfiles (`{uid}`) |
-| `workers` | Trabajadores (`{cedula}`, contiene `uid`, `epps`, `workTeam`, `role`) |
-| `supplies` | Insumos registrados (con `name`, `code`, `unit`, `optimalLevel`) |
-| `eppTypes` | Tipos de EPP con `name`, `code`, `renewalTime` (meses) |
-| `productionLines` | Líneas de producción con máquinas e insumos |
-| `inventory` | Inventario por grupo |
-| `requests` | Solicitudes de insumos (pendiente/aprobada/rechazada) |
-| `reservations` | Reservas de insumos |
-| `eppRequests` | Solicitudes de EPPs |
-| `eppReservations` | Reservas de EPPs |
-| `calendar` | Mantenimientos del calendario |
-| `nightlyTasks` | Reportes de tareas nocturnas |
-| `nightlyTasksUi` | Alcance del grupo nocturno (equipos por `{dateKey}`) |
-| `taskAssignments` | Asignaciones de tareas diurnas por `{dateKey}` |
+| Colección         | Uso                                                                   |
+| ----------------- | --------------------------------------------------------------------- |
+| `users`           | Usuarios y perfiles (`{uid}`)                                         |
+| `workers`         | Trabajadores (`{cedula}`, contiene `uid`, `epps`, `workTeam`, `role`) |
+| `supplies`        | Insumos registrados (con `name`, `code`, `unit`, `optimalLevel`)      |
+| `eppTypes`        | Tipos de EPP con `name`, `code`, `renewalTime` (meses)                |
+| `productionLines` | Líneas de producción con máquinas e insumos                           |
+| `inventory`       | Inventario por grupo                                                  |
+| `requests`        | Solicitudes de insumos (pendiente/aprobada/rechazada)                 |
+| `reservations`    | Reservas de insumos                                                   |
+| `eppRequests`     | Solicitudes de EPPs                                                   |
+| `eppReservations` | Reservas de EPPs                                                      |
+| `calendar`        | Mantenimientos del calendario                                         |
+| `nightlyTasks`    | Reportes de tareas nocturnas                                          |
+| `nightlyTasksUi`  | Alcance del grupo nocturno (equipos por `{dateKey}`)                  |
+| `taskAssignments` | Asignaciones de tareas diurnas por `{dateKey}`                        |
 
 ## Funcionalidades Clave
 
 ### NuevosRegistrosPage (admin)
+
 CRUD completo con persistencia a Firestore y notificaciones sweetalert2:
+
 - **Trabajadores**: crea usuario Firebase Auth sin auto-login (REST API), asigna contraseña, persiste en Firestore. Campo `password` opcional. EPPs se agregan con `notOwned: true` por defecto.
 - **Insumos**: alta/baja/modificación con `name`, `code`, `unit`, `optimalLevel`
 - **EPPs**: tipos de EPP dinámicos con `name`, `code`, `renewalTime`; al crear uno nuevo, se agrega automáticamente a todos los trabajadores existentes
 - **Líneas de Producción**: auto-generación de IDs (formato `LAM-001`), IDs de máquinas compuestos (`LAM-001-MAQ-002`), asignación de insumos requeridos por máquina
 
 ### EPPs Dinámicos
+
 - Los tipos de EPP se gestionan desde la pestaña EPPs de NuevosRegistrosPage
 - Cada EPP tiene: `name`, `code`, `renewalTime` (meses)
 - La clave en el mapa `epps` del trabajador se deriva de `epp.code` (no de `eppNameToKey(name)`)
@@ -172,24 +176,29 @@ CRUD completo con persistencia a Firestore y notificaciones sweetalert2:
 - Estados: vigente (verde), por vencer ≤30 días (amarillo), vencido (rojo)
 
 ### GrupoDetallePage
+
 - Context menu para cambiar rol y grupo de trabajadores
 - Cambio de rol persiste en `users/{uid}.role` (via `updateUserProfile`) y `workers/{cedula}.role` (via `patchWorker`)
 - Validación: máximo 1 encargado por grupo
 - Cambio de grupo persiste en `workers/{cedula}` (via `patchWorker`)
 
 ### Renovación Automática de EPPs
+
 Cuando un trabajador marca una reserva de EPPs como recibida:
+
 - **Recibida completa**: todas las fechas de EPPs se actualizan
 - **Recibida parcial**: solo los EPPs recibidos actualizan sus fechas
 - `lastRenewal` se establece a la fecha actual
 - `nextRenewal` se establece según `renewalTime` del tipo de EPP
 
 ### Flujo de Solicitudes y Reservas
+
 - **Encargado/general** pueden crear solicitudes de insumos y EPPs
 - **Admin** ve las solicitudes pendientes y puede aprobar (creando la reserva automáticamente) o rechazar
 - Al aprobar con cambios, se guardan los `approvedItems` y se marcan diferencias en el detalle
 
 ### Calendario y Rotación
+
 - Rotación de 3 semanas para grupos G1, G2, G3 con turnos diurno/nocturno/media jornada/libre
 - TN (Turno Normal) trabaja lunes a viernes 7am-4pm, descansa fin de semana
 - Admin puede registrar/eliminar mantenimientos en el calendario
@@ -200,41 +209,51 @@ Cuando un trabajador marca una reserva de EPPs como recibida:
 ## Funcionalidades por Página
 
 ### DashboardPage
+
 Indicadores desde Redux: total trabajadores, líneas, equipos, mantenimientos en curso (hoy), EPPs vencidos, grupos con inventario en 0 (con detalle de items agotados).
 
 ### CalendarioPage
+
 Semana con turnos de todos los grupos (G1, G2, G3, TN). Registro/eliminación de mantenimientos (admin). Carga de alcance del grupo nocturno desde reportes del día anterior. Asignación de tareas diurnas a grupos.
 
 ### MantenimientosPage
+
 Líneas de producción con máquinas e insumos requeridos, búsqueda por nombre. Datos desde `productionLines` Firestore.
 
 ### GestionEPPSPage
+
 Trabajadores con sus EPPs, búsqueda/filtro por grupo. Muestra etiquetas e íconos desde `eppTypes` + fallbacks estáticos. Filtrado por rol: admin ve todos, encargado ve su grupo, general ve solo sus EPPs.
 
 ### InventariosPage
+
 Inventario por grupo con estados (óptimo/bajo/sin stock) según `optimalLevel`. Admin puede cargar/corregir inventario desde insumos registrados.
 
 ### ReservasPage
+
 Reservas de insumos con filtros por grupo/fecha/estado. Encargados pueden marcar recibida completa/parcial/cancelada. Admin genera reservas y gestiona solicitudes.
 
 ### ReservasEPPsPage
+
 Reservas de EPPs por trabajador. Roles: admin gestiona todo, encargado ve su grupo, general ve sus propias reservas. Incluye talla para botas.
 
 ### ReportesTareasNocturnasPage
+
 Reportes nocturnos con tipo (mantenimiento sanitario/otras tareas), equipos intervenidos y total de insumos. Solo encargado puede crear; admin y encargado pueden ver.
 
 ### NuevosRegistrosPage
+
 Pestañas: Trabajadores, Insumos, EPPs, Líneas de Producción. CRUD completo con validaciones, confirmaciones y notificaciones.
 
 ### EquiposPage
+
 Vista mock (datos hardcodeados) de equipos con estados (operativo/mantenimiento/alerta/inactivo).
 
 ## Rotación de Grupos
 
 El sistema implementa un ciclo de rotación de 3 semanas:
 
-| Semana \ Día | Lun | Mar | Mié | Jue | Vie | Sáb | Dom |
-|---|---|---|---|---|---|---|---|
+| Semana \ Día | Lun        | Mar        | Mié        | Jue        | Vie        | Sáb   | Dom         |
+| ------------ | ---------- | ---------- | ---------- | ---------- | ---------- | ----- | ----------- |
 | **Semana 1** | G1:D, G2:N | G1:D, G2:N | G1:N, G3:D | G1:N, G3:D | G2:D, G3:N | G2:MJ | Todos libre |
 | **Semana 2** | G2:D, G3:N | G2:D, G3:N | G1:D, G2:N | G1:D, G2:N | G1:N, G3:D | G3:MJ | Todos libre |
 | **Semana 3** | G1:N, G3:D | G1:N, G3:D | G2:D, G3:N | G2:D, G3:N | G1:D, G2:N | G1:MJ | Todos libre |
@@ -251,6 +270,9 @@ npm install
 
 # Iniciar desarrollo
 npm run dev
+
+# Iniciar desarrollo exponiento el host
+npx vite --host
 
 # Build para producción
 npm run build
