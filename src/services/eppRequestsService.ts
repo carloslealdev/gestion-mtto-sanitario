@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { EPPReservationRequest, EPPRequestItem } from "@/store/slices/eppRequestsSlice"
 
 const COLLECTION = "eppRequests"
@@ -12,19 +12,28 @@ export async function createEPPRequest(data: Omit<EPPReservationRequest, "id">):
 }
 
 export async function updateEPPRequestStatus(id: string, status: EPPReservationRequest["status"]): Promise<void> {
-  const existing = await getDocument<EPPReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("EPP request not found")
-  await setDocument(COLLECTION, id, { ...existing, status })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("EPP request not found")
+    tx.set(ref, { id, ...snap.data(), status })
+  })
 }
 
 export async function setEPPApprovedItems(id: string, approvedItems: EPPRequestItem[]): Promise<void> {
-  const existing = await getDocument<EPPReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("EPP request not found")
-  await setDocument(COLLECTION, id, { ...existing, approvedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("EPP request not found")
+    tx.set(ref, { id, ...snap.data(), approvedItems })
+  })
 }
 
 export async function approveEPPRequest(id: string, items: EPPRequestItem[], approvedItems: EPPRequestItem[]): Promise<void> {
-  const existing = await getDocument<EPPReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("EPP request not found")
-  await setDocument(COLLECTION, id, { ...existing, status: "aprobada", items, approvedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("EPP request not found")
+    tx.set(ref, { id, ...snap.data(), status: "aprobada", items, approvedItems })
+  })
 }

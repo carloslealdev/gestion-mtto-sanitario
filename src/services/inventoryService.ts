@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, deleteDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, deleteDocument, getDocRef, runTransaction } from "@/lib/firestore"
 
 const COLLECTION = "inventory"
 
@@ -33,32 +33,41 @@ export async function updateInventoryItem(
   itemKey: string,
   quantity: number
 ): Promise<void> {
-  const existing = await getInventory(groupId)
-  if (!existing) throw new Error("Inventory not found")
-  const items = existing.items.map((i) =>
-    i.item === itemKey ? { ...i, quantity: Math.max(0, i.quantity + quantity) } : i
-  )
-  if (!items.find((i) => i.item === itemKey)) {
-    items.push({ item: itemKey, quantity: Math.max(0, quantity) })
-  }
-  await setDocument(COLLECTION, groupId, { groupId, items })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, groupId)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Inventory not found")
+    const existing = snap.data() as GroupInventoryData
+    const items = existing.items.map((i) =>
+      i.item === itemKey ? { ...i, quantity: Math.max(0, i.quantity + quantity) } : i
+    )
+    if (!items.find((i) => i.item === itemKey)) {
+      items.push({ item: itemKey, quantity: Math.max(0, quantity) })
+    }
+    tx.set(ref, { groupId, items })
+  })
 }
 
 export async function addItemsToInventory(
   groupId: string,
   newItems: { item: string; quantity: number }[]
 ): Promise<GroupInventoryData> {
-  const existing = await getInventory(groupId)
-  if (!existing) throw new Error("Inventory not found")
-  const items = [...existing.items]
-  for (const { item, quantity } of newItems) {
-    const idx = items.findIndex((i) => i.item === item)
-    if (idx >= 0) {
-      items[idx] = { ...items[idx], quantity: Math.max(0, items[idx].quantity + quantity) }
-    } else {
-      items.push({ item, quantity: Math.max(0, quantity) })
+  const result = await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, groupId)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Inventory not found")
+    const existing = snap.data() as GroupInventoryData
+    const items = [...existing.items]
+    for (const { item, quantity } of newItems) {
+      const idx = items.findIndex((i) => i.item === item)
+      if (idx >= 0) {
+        items[idx] = { ...items[idx], quantity: Math.max(0, items[idx].quantity + quantity) }
+      } else {
+        items.push({ item, quantity: Math.max(0, quantity) })
+      }
     }
-  }
-  await setDocument(COLLECTION, groupId, { groupId, items })
-  return { groupId, items }
+    tx.set(ref, { groupId, items })
+    return { groupId, items }
+  })
+  return result
 }

@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, updateDocument, deleteDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, updateDocument, deleteDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { AddWorkerPayload } from "@/store/slices/workersSlice"
 
 const COLLECTION = "workers"
@@ -21,9 +21,12 @@ export async function createWorker(worker: AddWorkerPayload & { uid?: string }):
 }
 
 export async function updateWorker(cedula: string, data: Partial<AddWorkerPayload>): Promise<void> {
-  const existing = await getWorker(cedula)
-  if (!existing) throw new Error("Worker not found")
-  await setDocument(COLLECTION, cedula, { ...existing, ...data })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, cedula)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Worker not found")
+    tx.set(ref, { id: cedula, ...snap.data(), ...data })
+  })
 }
 
 export async function patchWorker(cedula: string, data: Partial<AddWorkerPayload>): Promise<void> {

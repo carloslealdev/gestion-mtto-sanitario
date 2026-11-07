@@ -10,11 +10,3 @@ export async function getAllNightlyTasks(): Promise<(NightlyTaskReport & { id: s
 export async function createNightlyTaskReport(data: Omit<NightlyTaskReport, "id">): Promise<string> {
   return createDocument(COLLECTION, data)
 }
-
-export async function clearAllNightlyTasks(): Promise<void> {
-  const { getAllDocuments, deleteDocument } = await import("@/lib/firestore")
-  const all = await getAllDocuments(COLLECTION)
-  for (const doc of all) {
-    await deleteDocument(COLLECTION, doc.id)
-  }
-}

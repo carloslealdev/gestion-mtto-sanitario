@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { ReservationRequest, RequestItem } from "@/store/slices/requestsSlice"
 
 const COLLECTION = "requests"
@@ -16,21 +16,30 @@ export async function createRequest(data: Omit<ReservationRequest, "id">): Promi
 }
 
 export async function updateRequestStatus(id: string, status: ReservationRequest["status"]): Promise<void> {
-  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("Request not found")
-  await setDocument(COLLECTION, id, { ...existing, status })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Request not found")
+    tx.set(ref, { id, ...snap.data(), status })
+  })
 }
 
 export async function setApprovedItems(id: string, approvedItems: RequestItem[]): Promise<void> {
-  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("Request not found")
-  await setDocument(COLLECTION, id, { ...existing, approvedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Request not found")
+    tx.set(ref, { id, ...snap.data(), approvedItems })
+  })
 }
 
 export async function approveRequest(id: string, items: RequestItem[], approvedItems: RequestItem[]): Promise<void> {
-  const existing = await getDocument<ReservationRequest>(COLLECTION, id)
-  if (!existing) throw new Error("Request not found")
-  await setDocument(COLLECTION, id, { ...existing, status: "aprobada", items, approvedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Request not found")
+    tx.set(ref, { id, ...snap.data(), status: "aprobada", items, approvedItems })
+  })
 }
 
 export async function deleteRequest(id: string): Promise<void> {

@@ -23,6 +23,7 @@ import {
   endOfWeek,
   eachDayOfInterval,
   format,
+  parse,
   addWeeks,
   subWeeks,
   subDays,
@@ -61,12 +62,6 @@ import {
   computeEstimatedConsumption,
   setEstimatedConsumption as saveEstimatedConsumptionToFirestore,
 } from '@/services/estimatedConsumptionService';
-
-let maintenanceIdCounter = 0;
-const generateMaintenanceId = (lineId: number) => {
-  maintenanceIdCounter += 1;
-  return maintenanceIdCounter + lineId * 1000;
-};
 
 let taskAssignmentIdCounter = 0;
 const generateTaskAssignmentId = () => {
@@ -177,7 +172,7 @@ function DayCard({
         const line = productionLines.find((l) => l.id === lineId);
         if (!line) continue;
         const newMaintenance: MaintenanceEntry = {
-          id: generateMaintenanceId(lineId),
+          id: crypto.randomUUID(),
           lineId,
           lineName: line.name,
         };
@@ -205,7 +200,7 @@ function DayCard({
     }
   };
 
-  const handleRemoveMaintenance = async (maintenanceId: number) => {
+  const handleRemoveMaintenance = async (maintenanceId: string) => {
     const result = await Swal.fire({
       title: '¿Eliminar mantenimiento?',
       text: 'Esta acción no se puede deshacer.',
@@ -360,17 +355,17 @@ export default function CalendarioPage() {
   const canDelete = user?.role === 'admin';
   const isAdmin = user?.role === 'admin';
 
-  const currentDate = new Date(currentDateStr);
+  const currentDate = parse(currentDateStr, 'yyyy-MM-dd', new Date());
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const handlePrevWeek = () =>
-    dispatch(setCurrentDate(subWeeks(currentDate, 1).toISOString()));
+    dispatch(setCurrentDate(format(subWeeks(currentDate, 1), 'yyyy-MM-dd')));
   const handleNextWeek = () =>
-    dispatch(setCurrentDate(addWeeks(currentDate, 1).toISOString()));
+    dispatch(setCurrentDate(format(addWeeks(currentDate, 1), 'yyyy-MM-dd')));
   const handleCurrentWeek = () =>
-    dispatch(setCurrentDate(new Date().toISOString()));
+    dispatch(setCurrentDate(format(new Date(), 'yyyy-MM-dd')));
 
   const usedLineIdsInWeek = weekDays.flatMap((day) =>
     (maintenances[format(day, 'yyyy-MM-dd')] || []).map((m) => m.lineId),
@@ -414,9 +409,9 @@ export default function CalendarioPage() {
     if (!selectedMaintenanceId || !selectedTeam) return;
     setTaskSaving(true);
     try {
-      const separatorIndex = selectedMaintenanceId.indexOf('-');
-      const maintenanceId = selectedMaintenanceId.substring(0, separatorIndex);
-      const machineId = selectedMaintenanceId.substring(separatorIndex + 1);
+      const { m: maintenanceId, k: machineId } = JSON.parse(
+        selectedMaintenanceId,
+      ) as { m: string; k: string };
       const assignment = {
         id: generateTaskAssignmentId(),
         maintenanceId,
@@ -759,14 +754,17 @@ export default function CalendarioPage() {
                             })) || []
                           );
                         })
-                        .map((eq) => (
-                          <option
-                            key={`${eq.maintenanceId}-${eq.machineId}`}
-                            value={`${eq.maintenanceId}-${eq.machineId}`}
-                          >
-                            {normalizeName(eq.machineName)} - {eq.lineName}
-                          </option>
-                        ))}
+                        .map((eq) => {
+                          const value = JSON.stringify({
+                            m: eq.maintenanceId,
+                            k: eq.machineId,
+                          });
+                          return (
+                            <option key={value} value={value}>
+                              {normalizeName(eq.machineName)} - {eq.lineName}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
                   <div className='w-full sm:w-64'>

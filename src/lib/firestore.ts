@@ -8,10 +8,18 @@ import {
   deleteDoc,
   query,
   orderBy,
+  runTransaction as firebaseRunTransaction,
   type DocumentData,
   type OrderByDirection,
+  type Transaction,
 } from "firebase/firestore"
 import { db } from "./firebase"
+
+// Atomic read-modify-write: all reads must happen before writes inside the
+// callback; Firestore retries the whole transaction on contention.
+export async function runTransaction<T>(work: (tx: Transaction) => Promise<T>): Promise<T> {
+  return firebaseRunTransaction(db, work)
+}
 
 export function getCollectionRef(collectionName: string) {
   return collection(db, collectionName)

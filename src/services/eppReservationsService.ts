@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { EPPReservation, EPPReservationStatus, EPPReservationItem } from "@/store/slices/eppReservationsSlice"
 
 const COLLECTION = "eppReservations"
@@ -12,13 +12,19 @@ export async function createEPPReservation(data: Omit<EPPReservation, "id">): Pr
 }
 
 export async function updateEPPReservationStatus(id: string, status: EPPReservationStatus): Promise<void> {
-  const existing = await getDocument<EPPReservation>(COLLECTION, id)
-  if (!existing) throw new Error("EPP reservation not found")
-  await setDocument(COLLECTION, id, { ...existing, status })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("EPP reservation not found")
+    tx.set(ref, { id, ...snap.data(), status })
+  })
 }
 
 export async function setEPPReceivedItems(id: string, receivedItems: EPPReservationItem[]): Promise<void> {
-  const existing = await getDocument<EPPReservation>(COLLECTION, id)
-  if (!existing) throw new Error("EPP reservation not found")
-  await setDocument(COLLECTION, id, { ...existing, receivedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("EPP reservation not found")
+    tx.set(ref, { id, ...snap.data(), receivedItems })
+  })
 }

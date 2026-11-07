@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument } from "@/lib/firestore"
+import { getAllDocuments, getDocument, setDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { MaintenanceEntry } from "@/store/slices/calendarSlice"
 
 const COLLECTION = "calendar"
@@ -21,15 +21,27 @@ export async function setCalendarEntry(dateKey: string, data: CalendarDocument):
 }
 
 export async function addMaintenanceToDate(dateKey: string, maintenance: MaintenanceEntry): Promise<void> {
-  const existing = await getCalendarEntry(dateKey)
-  const entries = existing?.maintenances || []
-  entries.push(maintenance)
-  await setDocument(COLLECTION, dateKey, { dateKey, maintenances: entries })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, dateKey)
+    const snap = await tx.get(ref)
+    const entries = snap.exists()
+      ? [...((snap.data() as CalendarDocument).maintenances || [])]
+      : []
+    entries.push(maintenance)
+    tx.set(ref, { dateKey, maintenances: entries })
+  })
 }
 
-export async function removeMaintenanceFromDate(dateKey: string, maintenanceId: number): Promise<void> {
-  const existing = await getCalendarEntry(dateKey)
-  if (!existing) return
-  const entries = existing.maintenances.filter((m) => m.id !== maintenanceId)
-  await setDocument(COLLECTION, dateKey, { dateKey, maintenances: entries })
+export async function removeMaintenanceFromDate(dateKey: string, maintenanceId: string): Promise<void> {
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, dateKey)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) return
+    // String() on both sides: legacy documents store numeric ids while the
+    // app now generates string ids (see calendarSlice fetch normalization).
+    const entries = ((snap.data() as CalendarDocument).maintenances || []).filter(
+      (m) => String(m.id) !== String(maintenanceId)
+    )
+    tx.set(ref, { dateKey, maintenances: entries })
+  })
 }

@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, deleteDocument } from "@/lib/firestore"
+import { getAllDocuments, setDocument, deleteDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { ProductionLine } from "@/store/slices/productionLinesSlice"
 
 const COLLECTION = "productionLines"
@@ -12,9 +12,12 @@ export async function createProductionLine(id: string, data: ProductionLine): Pr
 }
 
 export async function updateProductionLine(id: string, data: Partial<ProductionLine>): Promise<void> {
-  const existing = await getDocument<ProductionLine>(COLLECTION, id)
-  if (!existing) throw new Error("ProductionLine not found")
-  await setDocument(COLLECTION, id, { ...existing, ...data })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("ProductionLine not found")
+    tx.set(ref, { id, ...snap.data(), ...data })
+  })
 }
 
 export async function deleteProductionLine(id: string): Promise<void> {

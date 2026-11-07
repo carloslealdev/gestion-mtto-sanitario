@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, deleteDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, deleteDocument, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { Supply } from "@/store/slices/suppliesSlice"
 
 const COLLECTION = "supplies"
@@ -16,9 +16,12 @@ export async function createSupply(supply: Omit<Supply, "id">): Promise<string> 
 }
 
 export async function updateSupply(id: string, data: Partial<Supply>): Promise<void> {
-  const existing = await getDocument<Supply>(COLLECTION, id)
-  if (!existing) throw new Error("Supply not found")
-  await setDocument(COLLECTION, id, { ...existing, ...data })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Supply not found")
+    tx.set(ref, { id, ...snap.data(), ...data })
+  })
 }
 
 export async function deleteSupply(id: string): Promise<void> {

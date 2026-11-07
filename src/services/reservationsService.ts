@@ -1,4 +1,4 @@
-import { getAllDocuments, getDocument, setDocument, createDocument } from "@/lib/firestore"
+import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
 import type { Reservation, ReservationStatus, ReservationItem } from "@/store/slices/reservationsSlice"
 
 const COLLECTION = "reservations"
@@ -16,13 +16,19 @@ export async function createReservation(data: Omit<Reservation, "id">): Promise<
 }
 
 export async function updateReservationStatus(id: string, status: ReservationStatus): Promise<void> {
-  const existing = await getDocument<Reservation>(COLLECTION, id)
-  if (!existing) throw new Error("Reservation not found")
-  await setDocument(COLLECTION, id, { ...existing, status })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Reservation not found")
+    tx.set(ref, { id, ...snap.data(), status })
+  })
 }
 
 export async function setReceivedItems(id: string, receivedItems: ReservationItem[]): Promise<void> {
-  const existing = await getDocument<Reservation>(COLLECTION, id)
-  if (!existing) throw new Error("Reservation not found")
-  await setDocument(COLLECTION, id, { ...existing, receivedItems })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error("Reservation not found")
+    tx.set(ref, { id, ...snap.data(), receivedItems })
+  })
 }

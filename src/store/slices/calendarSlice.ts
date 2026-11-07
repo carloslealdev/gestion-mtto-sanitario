@@ -1,8 +1,9 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import { format } from "date-fns"
 import * as calendarService from "@/services/calendarService"
 
 export interface MaintenanceEntry {
-  id: number
+  id: string
   lineId: number
   lineName: string
 }
@@ -15,7 +16,9 @@ interface CalendarState {
 }
 
 const initialState: CalendarState = {
-  currentDate: new Date().toISOString(),
+  // dateKey (yyyy-MM-dd, local) as the single calendar date currency:
+  // an ISO instant would shift the day at 23:00 UTC-3.
+  currentDate: format(new Date(), "yyyy-MM-dd"),
   maintenances: {},
   loading: false,
   error: null,
@@ -25,7 +28,9 @@ export const fetchCalendarEntries = createAsyncThunk("calendar/fetch", async () 
   const entries = await calendarService.getAllCalendarEntries()
   const maintenances: Record<string, MaintenanceEntry[]> = {}
   for (const entry of entries) {
-    maintenances[entry.dateKey] = entry.maintenances
+    // Legacy documents store numeric ids; normalize to string at the fetch
+    // boundary so reducers and task-assignment matching see a single type.
+    maintenances[entry.dateKey] = entry.maintenances.map((m) => ({ ...m, id: String(m.id) }))
   }
   return maintenances
 })
@@ -40,7 +45,7 @@ export const addMaintenanceEntry = createAsyncThunk(
 
 export const removeMaintenanceEntry = createAsyncThunk(
   "calendar/removeMaintenanceEntry",
-  async ({ dateKey, maintenanceId }: { dateKey: string; maintenanceId: number }) => {
+  async ({ dateKey, maintenanceId }: { dateKey: string; maintenanceId: string }) => {
     await calendarService.removeMaintenanceFromDate(dateKey, maintenanceId)
     return { dateKey, maintenanceId }
   }

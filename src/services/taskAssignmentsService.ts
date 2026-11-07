@@ -1,4 +1,4 @@
-import { getDocument, setDocument } from "@/lib/firestore"
+import { getDocument, getDocRef, runTransaction } from "@/lib/firestore"
 
 export interface TaskAssignment {
   id: string
@@ -20,13 +20,24 @@ export async function getTaskAssignments(dateKey: string): Promise<TaskAssignmen
 }
 
 export async function addTaskAssignment(dateKey: string, assignment: TaskAssignment): Promise<void> {
-  const existing = await getTaskAssignments(dateKey)
-  const assignments = [...existing, assignment]
-  await setDocument(COLLECTION, dateKey, { dateKey, assignments })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, dateKey)
+    const snap = await tx.get(ref)
+    const existing: TaskAssignment[] = snap.exists()
+      ? ((snap.data() as TaskAssignmentDocument).assignments ?? [])
+      : []
+    tx.set(ref, { dateKey, assignments: [...existing, assignment] })
+  })
 }
 
 export async function removeTaskAssignment(dateKey: string, assignmentId: string): Promise<void> {
-  const existing = await getTaskAssignments(dateKey)
-  const assignments = existing.filter((a) => a.id !== assignmentId)
-  await setDocument(COLLECTION, dateKey, { dateKey, assignments })
+  await runTransaction(async (tx) => {
+    const ref = getDocRef(COLLECTION, dateKey)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) return
+    const assignments = ((snap.data() as TaskAssignmentDocument).assignments ?? []).filter(
+      (a) => a.id !== assignmentId
+    )
+    tx.set(ref, { dateKey, assignments })
+  })
 }
