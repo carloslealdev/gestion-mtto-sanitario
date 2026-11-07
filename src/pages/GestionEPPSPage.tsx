@@ -69,10 +69,6 @@ const staticEppIcons: Record<string, React.ComponentType<{ className?: string }>
   fullFace: Shield,
 };
 
-function eppNameToKey(name: string): string {
-  return name.toLowerCase().replace(/[\s-]+/g, "_")
-}
-
 export default function GestionEPPSPage() {
   const dispatch = useAppDispatch()
   const search = useAppSelector((state) => state.epp.search)

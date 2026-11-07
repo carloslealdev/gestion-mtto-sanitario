@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import * as workersService from "@/services/workersService"
 import { createUserWithoutSignIn, updateUserProfile, deleteUserProfile } from "@/services/authService"
-import type { EPPs } from "@/mock-data/workers"
+import type { EPPs, EPPDates } from "@/mock-data/workers"
 
 export type WorkerRole = "trabajador-encargado" | "trabajador-general"
 export type WorkTeam = "G1" | "G2" | "G3" | "TN" | "Sin asignar"
@@ -100,6 +100,50 @@ export const updateFullWorkerAsync = createAsyncThunk(
   }
 )
 
+/**
+ * Firestore documents may carry EPP keys beyond the fixed `EPPs` interface
+ * (legacy/dynamic EPP types), so dynamic access goes through this map view.
+ */
+type EPPEntry = EPPDates & { id?: string }
+type EPPMap = Record<string, EPPEntry | undefined>
+
+function asEPPMap(epps: EPPs): EPPMap {
+  return epps as unknown as EPPMap
+}
+
+/**
+ * Service-side update: matches stored entries by id/name and rewrites only
+ * the renewal dates, preserving the rest of the entry (historical thunk behavior).
+ */
+function applyEppUpdatesForService(epps: EPPs, updates: EPPUpdateEntry[]): void {
+  const map = asEPPMap(epps)
+  for (const u of updates) {
+    let key = Object.keys(map).find((k) => map[k]?.id === u.id)
+    if (!key) key = map[u.epp] ? u.epp : undefined
+    if (!key) key = Object.keys(map).find((k) => k.includes(u.epp))
+    const entry = key ? map[key] : undefined
+    if (!key || !entry) continue
+    map[key] = { ...entry, lastRenewal: u.lastRenewal, nextRenewal: u.nextRenewal }
+  }
+}
+
+/**
+ * Store-side update (shared by the sync reducer and the thunk's fulfilled
+ * case): falls back to the declared EPP key and applies `notOwned` when
+ * present (historical reducer behavior).
+ */
+function applyEppUpdatesLocally(epps: EPPs, updates: EPPUpdateEntry[]): void {
+  const map = asEPPMap(epps)
+  for (const u of updates) {
+    const key = Object.keys(map).find((k) => map[k]?.id === u.id) || u.epp
+    const entry = map[key]
+    if (!entry) continue
+    entry.lastRenewal = u.lastRenewal
+    entry.nextRenewal = u.nextRenewal
+    if (u.notOwned !== undefined) entry.notOwned = u.notOwned
+  }
+}
+
 export const updateWorkerEPPAsync = createAsyncThunk(
   "workers/updateEPPAsync",
   async (payload: WorkerEPPUpdate) => {
@@ -107,18 +151,8 @@ export const updateWorkerEPPAsync = createAsyncThunk(
     if (!existing) throw new Error("Worker not found")
     if (!existing.epps) return payload
 
-    const newEpps = { ...existing.epps } as Record<string, any>
-    for (const epp of payload.epps) {
-      let key = Object.keys(newEpps).find((k) => newEpps[k]?.id === epp.id)
-      if (!key) key = newEpps[epp.epp] ? epp.epp : undefined
-      if (!key) key = Object.keys(newEpps).find((k) => k.includes(epp.epp))
-      if (!key) continue
-      newEpps[key] = {
-        ...newEpps[key],
-        lastRenewal: epp.lastRenewal,
-        nextRenewal: epp.nextRenewal,
-      }
-    }
+    const newEpps: EPPs = { ...existing.epps }
+    applyEppUpdatesForService(newEpps, payload.epps)
     await workersService.updateWorker(payload.cedula, { epps: newEpps })
     return payload
   }
@@ -155,16 +189,7 @@ const workersSlice = createSlice({
       const { cedula, epps } = action.payload
       const worker = state.workers.find((w) => w.cedula === cedula)
       if (worker) {
-        epps.forEach((eppUpdate) => {
-          const key = Object.keys(worker.epps).find((k) => (worker.epps as any)[k]?.id === eppUpdate.id) || eppUpdate.epp
-          if (worker.epps[key]) {
-            worker.epps[key].lastRenewal = eppUpdate.lastRenewal
-            worker.epps[key].nextRenewal = eppUpdate.nextRenewal
-            if (eppUpdate.notOwned !== undefined) {
-              worker.epps[key].notOwned = eppUpdate.notOwned
-            }
-          }
-        })
+        applyEppUpdatesLocally(worker.epps, epps)
       }
     },
     updateFullWorker(
@@ -240,16 +265,7 @@ const workersSlice = createSlice({
         const { cedula, epps } = action.payload
         const worker = state.workers.find((w) => w.cedula === cedula)
         if (worker) {
-          epps.forEach((eppUpdate) => {
-            const key = Object.keys(worker.epps).find((k) => (worker.epps as any)[k]?.id === eppUpdate.id) || eppUpdate.epp
-            if (worker.epps[key]) {
-              worker.epps[key].lastRenewal = eppUpdate.lastRenewal
-              worker.epps[key].nextRenewal = eppUpdate.nextRenewal
-              if (eppUpdate.notOwned !== undefined) {
-                worker.epps[key].notOwned = eppUpdate.notOwned
-              }
-            }
-          })
+          applyEppUpdatesLocally(worker.epps, epps)
         }
       })
       .addCase(deleteWorkerAsync.pending, (state) => {

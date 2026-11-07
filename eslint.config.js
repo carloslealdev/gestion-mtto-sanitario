@@ -19,4 +19,18 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Fast Refresh purity exceptions for intentional non-component exports:
+    // shadcn/ui variant helpers and the theme hook colocated with its provider.
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': [
+        'error',
+        {
+          allowConstantExport: true,
+          allowExportNames: ['badgeVariants', 'buttonVariants', 'useTheme'],
+        },
+      ],
+    },
+  },
 ])

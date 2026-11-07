@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from "react"
 import Swal from "sweetalert2"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { addEPPReservation, addEPPReservationAsync, fetchEPPReservations, updateEPPReservationStatusAsync, setEPPReceivedItemsAsync, type EPPReservationItem, type EPPReservationStatus } from "@/store/slices/eppReservationsSlice"
+import { addEPPReservationAsync, fetchEPPReservations, updateEPPReservationStatusAsync, setEPPReceivedItemsAsync, type EPPReservationItem, type EPPReservationStatus } from "@/store/slices/eppReservationsSlice"
 import { addEPPRequestAsync, fetchEPPRequests, approveEPPRequestAsync, updateEPPRequestStatusAsync, type EPPRequestItem } from "@/store/slices/eppRequestsSlice"
-import { updateWorkerEPP, updateWorkerEPPAsync } from "@/store/slices/workersSlice"
-import { fetchEPPTypes, type EPPType } from "@/store/slices/eppTypesSlice"
+import { updateWorkerEPPAsync } from "@/store/slices/workersSlice"
+import { fetchEPPTypes } from "@/store/slices/eppTypesSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,8 +30,6 @@ const eppLabels: Record<string, string> = {
   auditivo: "Protector Auditivo",
   fullFace: "Máscara Completa",
 }
-
-const eppOptions = ["casco", "lentes", "botas", "auditivo", "fullFace"] as const
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   pendiente: { color: "bg-yellow-500", label: "Pendiente" },
