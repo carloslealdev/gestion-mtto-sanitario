@@ -7,7 +7,6 @@ import {
 } from "firebase/auth"
 import { auth, FIREBASE_API_KEY } from "@/lib/firebase"
 import { getDocument, setDocument, getAllDocuments, updateDocument, deleteDocument } from "@/lib/firestore"
-import { hashPassword } from "@/lib/crypto"
 import type { AuthUserRole } from "@/store/slices/authSlice"
 
 const CEDULA_DOMAIN = "@gestion-mtto.app"
@@ -24,43 +23,7 @@ export interface UserProfile {
   role: AuthUserRole
   email: string
   username: string
-  password?: string
   createdAt: string
-}
-
-const BOOTSTRAP_USERS: { cedula: string; password: string; name: string; role: AuthUserRole }[] = [
-  { cedula: "admin", password: "123456", name: "Administrador", role: "admin" },
-]
-
-async function tryBootstrapUser(
-  cedula: string,
-  password: string
-): Promise<{ user: User; profile: UserProfile; idToken: string } | null> {
-  const bootstrapUser = BOOTSTRAP_USERS.find((u) => u.cedula === cedula && u.password === password)
-  if (!bootstrapUser) return null
-
-  try {
-    const email = cedulaToEmail(bootstrapUser.cedula)
-    const userCredential = await createUserWithEmailAndPassword(auth, email, bootstrapUser.password)
-
-    const profile: UserProfile = {
-      uid: userCredential.user.uid,
-      cedula: bootstrapUser.cedula,
-      name: bootstrapUser.name,
-      role: bootstrapUser.role,
-      email,
-      username: bootstrapUser.cedula,
-      password: hashPassword(bootstrapUser.password),
-      createdAt: new Date().toISOString(),
-    }
-
-    await setDocument("users", userCredential.user.uid, profile)
-    const idToken = await userCredential.user.getIdToken()
-
-    return { user: userCredential.user, profile, idToken }
-  } catch {
-    return null
-  }
 }
 
 export async function loginWithCedula(
@@ -69,27 +32,15 @@ export async function loginWithCedula(
 ): Promise<{ user: User; profile: UserProfile; idToken: string }> {
   const email = cedulaToEmail(cedula)
 
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-    const idToken = await userCredential.user.getIdToken()
+  const userCredential = await signInWithEmailAndPassword(auth, email, password)
+  const idToken = await userCredential.user.getIdToken()
 
-    const profile = await getDocument<UserProfile>("users", userCredential.user.uid)
-    if (!profile) {
-      throw new Error("Perfil de usuario no encontrado")
-    }
-
-    return { user: userCredential.user, profile, idToken }
-  } catch (error: unknown) {
-    const err = error as { code?: string }
-    if (
-      err?.code === "auth/user-not-found" ||
-      err?.code === "auth/invalid-credential"
-    ) {
-      const bootstrapped = await tryBootstrapUser(cedula, password)
-      if (bootstrapped) return bootstrapped
-    }
-    throw error
+  const profile = await getDocument<UserProfile>("users", userCredential.user.uid)
+  if (!profile) {
+    throw new Error("Perfil de usuario no encontrado")
   }
+
+  return { user: userCredential.user, profile, idToken }
 }
 
 export async function createUserWithoutSignIn(
@@ -122,7 +73,6 @@ export async function createUserWithoutSignIn(
       role,
       email,
       username: cleanCedula,
-      password: hashPassword(password),
       createdAt: new Date().toISOString(),
     }
     await setDocument("users", uid, profile)
@@ -153,7 +103,6 @@ export async function createUserWithoutSignIn(
         role,
         email,
         username: cleanCedula,
-        password: hashPassword(password),
         createdAt: new Date().toISOString(),
       }
       await setDocument("users", uid, profile)
@@ -181,7 +130,6 @@ export async function createUserWithoutSignIn(
           role,
           email,
           username: cleanCedula,
-          password: hashPassword(password),
           createdAt: new Date().toISOString(),
         }
         await setDocument("users", uid, profile)
@@ -213,7 +161,6 @@ export async function registerUser(
     role,
     email,
     username: cleanCedula,
-    password: hashPassword(password),
     createdAt: new Date().toISOString(),
   }
 

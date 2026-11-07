@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// DRAFT — Firestore security rules for Gestión MTTO Sanitario.
+//
+// HOW TO DEPLOY (manual, one time):
+//   1. Review this file, especially the per-collection permission notes.
+//   2. Paste the contents into Firebase Console > Firestore > Rules, or run
+//      `firebase deploy --only firestore:rules` with the Firebase CLI.
+//   3. Test in the Rules Playground (Console > Firestore > Rules > Playground)
+//      with a signed-in 'general' user BEFORE going live.
+//
+// Permission model (from src/components/layout/Sidebar.tsx):
+//   admin     : full access (registros, dashboard, mantenimientos, reservas de insumos, reportes)
+//   encargado : operational access (reservas de insumos, reportes nocturnos, calendario, etc.)
+//   general   : read + own operational writes (calendario, grupos, inventarios, reservas de EPPs)
+//
+// NOTE: /registros (worker creation, which also creates the Auth user and the
+// users/{uid} profile) is admin-only in the UI, so `users` writes are admin-only.
+// If that route ever opens to 'encargado', relax `allow write` on /users accordingly.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+
+    function isStaff() {
+      return signedIn() && role() in ['admin', 'encargado'];
+    }
+
+    // --- Identity ---------------------------------------------------------
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isStaff());
+      allow write: if isAdmin();
+    }
+
+    // --- Catalogs & directories (staff-managed) ---------------------------
+    match /workers/{id} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+    match /supplies/{id} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+    match /eppTypes/{id} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+    match /productionLines/{id} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+
+    // --- Operational collections (any authenticated role reads and writes):
+    // 'general' users report tasks, reservations and requests through these.
+    // TODO: tighten per collection once the exact permission matrix is agreed,
+    // e.g. allow create-only for 'general' and update/delete for 'isStaff()'.
+    match /calendar/{id}            { allow read, write: if signedIn(); }
+    match /inventory/{id}           { allow read, write: if signedIn(); }
+    match /requests/{id}            { allow read, write: if signedIn(); }
+    match /reservations/{id}        { allow read, write: if signedIn(); }
+    match /eppRequests/{id}         { allow read, write: if signedIn(); }
+    match /eppReservations/{id}     { allow read, write: if signedIn(); }
+    match /nightlyTasks/{id}        { allow read, write: if signedIn(); }
+    match /taskAssignments/{id}     { allow read, write: if signedIn(); }
+
+    // Everything else: deny by default (defense in depth; deny is the
+    // Firestore default, this makes the policy explicit).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

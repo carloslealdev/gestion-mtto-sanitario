@@ -203,6 +203,10 @@ function TrabajadoresSection() {
   const handleSave = async () => {
     if (!form.firstName || !form.lastName || !form.cedula || !form.fechaIngreso)
       return;
+    if (!isEditing && !form.password) {
+      setSaveError('La contraseña es obligatoria para crear el trabajador');
+      return;
+    }
     setSaveError(null);
 
     const eppsData: Record<
@@ -272,7 +276,7 @@ function TrabajadoresSection() {
             workTeam: form.workTeam,
             role: form.role,
             epps: eppsData as unknown as EPPs,
-            password: form.password || '123456',
+            password: form.password,
           }),
         ).unwrap();
         Swal.fire({
