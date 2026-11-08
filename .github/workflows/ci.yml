@@ -25,10 +25,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
       # `build` runs `tsc -b && vite build`, so type errors and bundling
       # both fail here. The app needs no secrets at build time (env vars
       # are validated at runtime in the browser, see src/lib/firebase.ts).
       - name: Build
         run: npm run build
-
-      # Add `npm test` here once Phase 5 introduces a test runner.
