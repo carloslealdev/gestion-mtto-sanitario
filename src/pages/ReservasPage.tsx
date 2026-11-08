@@ -1,6 +1,16 @@
 import { useEffect, useState, useMemo } from "react"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/errors"
+import {
+  statusConfig,
+  workTeamLabels,
+  type DetailReservationData,
+  type RequestDetailData,
+  type Team,
+} from "./reservas/constants"
+import { ReservaDetailDialog } from "./reservas/ReservaDetailDialog"
+import { RecibidaParcialDialog } from "./reservas/RecibidaParcialDialog"
+import { SolicitudDetailDialog } from "./reservas/SolicitudDetailDialog"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
   addReservationAsync,
@@ -19,18 +29,9 @@ import {
 } from "@/store/slices/requestsSlice"
 import { addItemsToInventoryAsync } from "@/store/slices/inventorySlice"
 import { fetchSupplies } from "@/store/slices/suppliesSlice"
-import type { Supply } from "@/store/slices/suppliesSlice"
-import { inventoryLabels } from "@/lib/inventory"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,37 +39,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Plus, Trash2, Search, Eye, ChevronDown } from "lucide-react"
-
-type Team = "G1" | "G2" | "G3" | "TN"
-
-const workTeamLabels: Record<Team, string> = {
-  G1: "Grupo 1",
-  G2: "Grupo 2",
-  G3: "Grupo 3",
-  TN: "Turno Normal",
-}
-
-const statusConfig: Record<string, { color: string; label: string }> = {
-  pendiente: { color: "bg-yellow-500", label: "Pendiente" },
-  retirada_completa: { color: "bg-green-500", label: "Recibida Completa" },
-  retirada_parcial: { color: "bg-blue-500", label: "Recibida Parcial" },
-  cancelada: { color: "bg-gray-500", label: "Cancelada" },
-}
-
-interface DetailReservationData {
-  id: string
-  items: ReservationItem[]
-  team: Team
-  date: string
-  status: string
-  receivedItems?: ReservationItem[]
-}
-
-function getItemLabel(itemKey: string, supplyList: Supply[]): string {
-  const supply = supplyList.find((s) => s.id === itemKey)
-  if (supply) return `${supply.name} (${supply.code})`
-  return inventoryLabels[itemKey] || itemKey
-}
 
 export default function ReservasPage() {
   const dispatch = useAppDispatch()
@@ -86,13 +56,7 @@ export default function ReservasPage() {
   const [receivedItems, setReceivedItemsLocal] = useState<ReservationItem[]>([])
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestItems, setRequestItems] = useState<RequestItem[]>([])
-  const [selectedRequest, setSelectedRequest] = useState<{
-    id: string
-    items: RequestItem[]
-    team: Team
-    date: string
-    status: string
-  } | null>(null)
+  const [selectedRequest, setSelectedRequest] = useState<RequestDetailData | null>(null)
   const [isFromRequest, setIsFromRequest] = useState(false)
   const [approvedRequestId, setApprovedRequestId] = useState<string | null>(null)
 
@@ -740,227 +704,34 @@ export default function ReservasPage() {
         </Card>
       )}
 
-      <Dialog open={detailReservation !== null} onOpenChange={() => setDetailReservation(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalle de Reserva</DialogTitle>
-          </DialogHeader>
-          {detailReservation && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Grupo de Trabajo:</span>
-                  <p className="font-medium">{workTeamLabels[detailReservation.team]} ({detailReservation.team})</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Fecha y Hora:</span>
-                  <p className="font-medium">{detailReservation.date}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Estado:</span>
-                  <p className="font-medium">
-                    <span className={`text-xs text-white px-2 py-1 rounded ${statusConfig[detailReservation.status].color}`}>
-                      {statusConfig[detailReservation.status].label}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div>
-                <span className="text-muted-foreground font-medium">Insumos Solicitados:</span>
-                <div className="mt-2 space-y-2">
-                  {detailReservation.items.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                      <span>{getItemLabel(item.item, supplies)}</span>
-                      <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {detailReservation.status === "retirada_parcial" && detailReservation.receivedItems && (
-                <div>
-                  <span className="text-muted-foreground font-medium">Insumos Recibidos:</span>
-                  <div className="mt-2 space-y-2">
-                    {detailReservation.receivedItems.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                        <span>{getItemLabel(item.item, supplies)}</span>
-                        <Badge variant="default" className="bg-green-500">Recibido: {item.quantity}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ReservaDetailDialog
+        reservation={detailReservation}
+        supplies={supplies}
+        onClose={() => setDetailReservation(null)}
+      />
 
-      <Dialog open={partialReceiveModal !== null} onOpenChange={() => setPartialReceiveModal(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Recibida Parcial - Seleccionar items</DialogTitle>
-          </DialogHeader>
-          {partialReceiveModal && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecciona los items que fueron recibidos. Los items eliminados no fueron recibidos.
-              </p>
-              <div className="space-y-2">
-                {receivedItems.map((item, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-muted rounded">
-                    <span>{getItemLabel(item.item, supplies)}</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max={item.quantity}
-                        value={item.quantity}
-                        onChange={(e) => handleReceivedItemQuantityChange(index, Number(e.target.value))}
-                        className="w-20 text-center"
-                      />
-                      <span className="text-xs text-muted-foreground">/ {item.quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveReceivedItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {receivedItems.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-4">
-                  No hay items remaining. Todos los items fueron rechazados.
-                </p>
-              )}
-              <div className="flex gap-2 pt-4 justify-end">
-                <Button variant="outline" onClick={() => {
-                  setPartialReceiveModal(null)
-                  setReceivedItemsLocal([])
-                }}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleFinalizePartialReceive}>
-                  Finalizar
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <RecibidaParcialDialog
+        modal={partialReceiveModal}
+        receivedItems={receivedItems}
+        supplies={supplies}
+        onClose={() => {
+          setPartialReceiveModal(null)
+          setReceivedItemsLocal([])
+        }}
+        onQuantityChange={handleReceivedItemQuantityChange}
+        onRemoveItem={handleRemoveReceivedItem}
+        onFinalize={handleFinalizePartialReceive}
+      />
 
-      <Dialog open={selectedRequest !== null} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalle de Solicitud de Reserva</DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Grupo de Trabajo:</span>
-                  <p className="font-medium">{workTeamLabels[selectedRequest.team]} ({selectedRequest.team})</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Fecha y Hora:</span>
-                  <p className="font-medium">{selectedRequest.date}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Estado:</span>
-                  <p className="font-medium">
-                    <span className={`text-xs text-white px-2 py-1 rounded ${
-                      selectedRequest.status === "pendiente" ? "bg-yellow-500" :
-                      selectedRequest.status === "aprobada" ? "bg-green-500" : "bg-red-500"
-                    }`}>
-                      {selectedRequest.status === "pendiente" ? "Pendiente" :
-                       selectedRequest.status === "aprobada" ? "Aprobada" : "Rechazada"}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              {selectedRequest.status === "aprobada" ? (
-                <>
-                  <div>
-                    <span className="text-muted-foreground font-medium">Insumos Aprobados:</span>
-                    <div className="mt-2 space-y-2">
-                      {(() => {
-                        const request = requests.find((r) => r.id === selectedRequest.id)
-                        const approvedItems = request?.approvedItems || selectedRequest.items
-                        return approvedItems.map((item, i) => {
-                          const requestedItem = selectedRequest.items.find((s) => s.item === item.item)
-                          const hasDifference = requestedItem && requestedItem.quantity !== item.quantity
-                          return (
-                            <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                              <span>{getItemLabel(item.item, supplies)}</span>
-                              <div className="flex items-center gap-2">
-                                {hasDifference && (
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    {requestedItem?.quantity}
-                                  </span>
-                                )}
-                                <Badge variant="default" className="bg-green-500">Aprobado: {item.quantity}</Badge>
-                              </div>
-                            </div>
-                          )
-                        })
-                      })()}
-                    </div>
-                  </div>
-                  {(() => {
-                    const request = requests.find((r) => r.id === selectedRequest.id)
-                    const approvedItems = request?.approvedItems || selectedRequest.items
-                    const hasDifference = selectedRequest.items.some((s) => {
-                      const approved = approvedItems.find((a) => a.item === s.item)
-                      return !approved || approved.quantity !== s.quantity
-                    })
-                    if (!hasDifference) return null
-                    return (
-                      <div>
-                        <span className="text-muted-foreground font-medium">Insumos Solicitados (original):</span>
-                        <div className="mt-2 space-y-2">
-                          {selectedRequest.items.map((item, i) => {
-                            const approved = approvedItems.find((a) => a.item === item.item)
-                            if (approved && approved.quantity === item.quantity) return null
-                            return (
-                              <div key={i} className="flex justify-between items-center p-2 bg-muted rounded opacity-60">
-                                <span>{getItemLabel(item.item, supplies)}</span>
-                                <Badge variant="secondary">Solicitado: {item.quantity}</Badge>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </>
-              ) : (
-                <div>
-                  <span className="text-muted-foreground font-medium">Insumos Solicitados:</span>
-                  <div className="mt-2 space-y-2">
-                    {selectedRequest.items.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                        <span>{getItemLabel(item.item, supplies)}</span>
-                        <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selectedRequest.status === "pendiente" && isAdmin && (
-                <div className="flex gap-2 pt-4 justify-end">
-                  <Button variant="outline" onClick={() => handleRejectRequest(selectedRequest.id)}>
-                    Rechazar
-                  </Button>
-                  <Button onClick={() => handleApproveRequest(selectedRequest.id)}>
-                    Aprobar y crear reserva
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <SolicitudDetailDialog
+        request={selectedRequest}
+        requests={requests}
+        isAdmin={isAdmin}
+        supplies={supplies}
+        onClose={() => setSelectedRequest(null)}
+        onApprove={handleApproveRequest}
+        onReject={handleRejectRequest}
+      />
     </div>
   )
 }
