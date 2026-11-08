@@ -113,7 +113,7 @@ export default function ReservasPage() {
       return worker?.workTeam || null
     }
     return null
-  }, [user, workers])
+  }, [isEncargado, user, workers])
 
   const filteredReservations = useMemo(() => {
     let filtered = reservations

@@ -64,6 +64,8 @@ import {
 } from '@/services/estimatedConsumptionService';
 
 let taskAssignmentIdCounter = 0;
+const EMPTY_MAINTENANCES: MaintenanceEntry[] = [];
+
 const generateTaskAssignmentId = () => {
   taskAssignmentIdCounter += 1;
   return `ta_${taskAssignmentIdCounter}_${Date.now()}`;
@@ -375,7 +377,7 @@ export default function CalendarioPage() {
   const weekLabelEnd = format(weekEnd, 'd MMM yyyy', { locale: es });
 
   const todayKey = format(currentDate, 'yyyy-MM-dd');
-  const todayMaintenances = maintenances[todayKey] || [];
+  const todayMaintenances = maintenances[todayKey] || EMPTY_MAINTENANCES;
 
   const [selectedMaintenanceId, setSelectedMaintenanceId] =
     useState<string>('');
