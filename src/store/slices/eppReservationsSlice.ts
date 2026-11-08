@@ -1,24 +1,17 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as eppReservationsService from "@/services/eppReservationsService"
+import type {
+  EPPReservation,
+  EPPReservationItem,
+  EPPReservationStatus,
+} from "@/types/epp"
 
-export type EPPReservationStatus = "pendiente" | "retirada_completa" | "retirada_parcial" | "cancelada"
-
-export interface EPPReservationItem {
-  epp: "casco" | "lentes" | "botas" | "auditivo" | "fullFace"
-  quantity: number
-  talla?: number
-}
-
-export interface EPPReservation {
-  id: string
-  workerCedula: string
-  workerName: string
-  items: EPPReservationItem[]
-  createdAt: string
-  status: EPPReservationStatus
-  receivedItems?: EPPReservationItem[]
-}
+export type {
+  EPPReservation,
+  EPPReservationItem,
+  EPPReservationStatus,
+} from "@/types/epp"
 
 interface EPPReservationsState {
   reservations: EPPReservation[]

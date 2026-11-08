@@ -1,22 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as eppRequestsService from "@/services/eppRequestsService"
+import type { EPPReservationRequest, EPPRequestItem } from "@/types/epp"
 
-export interface EPPRequestItem {
-  epp: string
-  quantity: number
-  talla?: number
-}
-
-export interface EPPReservationRequest {
-  id: string
-  workerCedula: string
-  workerName: string
-  items: EPPRequestItem[]
-  createdAt: string
-  status: "pendiente" | "aprobada" | "rechazada"
-  approvedItems?: EPPRequestItem[]
-}
+export type { EPPReservationRequest, EPPRequestItem } from "@/types/epp"
 
 interface EPPRequestsState {
   requests: EPPReservationRequest[]

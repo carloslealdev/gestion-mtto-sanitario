@@ -1,25 +1,12 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import * as productionLinesService from "@/services/productionLinesService"
+import type { ProductionLine } from "@/types/production"
 
-export interface SupplyRequired {
-  supplyId: string
-  supplyName: string
-  quantity: number
-  unit: string
-}
-
-export interface Machine {
-  machineId: string
-  name: string
-  supplies_required: SupplyRequired[]
-}
-
-export interface ProductionLine {
-  id: number
-  name: string
-  lineId: string
-  machines: Machine[]
-}
+export type {
+  Machine,
+  ProductionLine,
+  SupplyRequired,
+} from "@/types/production"
 
 interface ProductionLinesState {
   lines: ProductionLine[]

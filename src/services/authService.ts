@@ -7,7 +7,7 @@ import {
 } from "firebase/auth"
 import { auth, FIREBASE_API_KEY } from "@/lib/firebase"
 import { getDocument, setDocument, getAllDocuments, updateDocument, deleteDocument } from "@/lib/firestore"
-import type { AuthUserRole } from "@/store/slices/authSlice"
+import type { AuthUserRole } from "@/types/auth"
 
 const CEDULA_DOMAIN = "@gestion-mtto.app"
 

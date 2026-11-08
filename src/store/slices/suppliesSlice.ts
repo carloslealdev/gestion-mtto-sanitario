@@ -1,13 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import * as suppliesService from "@/services/suppliesService"
+import type { Supply } from "@/types/supply"
 
-export interface Supply {
-  id: string
-  name: string
-  code: string
-  unit: "pieza" | "par" | "unidad" | "litro"
-  optimalLevel?: number
-}
+export type { Supply } from "@/types/supply"
 
 interface SuppliesState {
   supplies: Supply[]

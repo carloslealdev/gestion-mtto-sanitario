@@ -2,13 +2,9 @@ import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/tool
 import * as eppTypesService from "@/services/eppTypesService"
 import * as workersService from "@/services/workersService"
 import { updateDocument } from "@/lib/firestore"
+import type { EPPType } from "@/types/epp"
 
-export interface EPPType {
-  id: string
-  name: string
-  code: string
-  renewalTime: number
-}
+export type { EPPType } from "@/types/epp"
 
 interface EPPTypesState {
   eppTypes: EPPType[]

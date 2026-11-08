@@ -1,5 +1,5 @@
 import { getAllDocuments, setDocument, deleteDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { ProductionLine } from "@/store/slices/productionLinesSlice"
+import type { ProductionLine } from "@/types/production"
 
 const COLLECTION = "productionLines"
 

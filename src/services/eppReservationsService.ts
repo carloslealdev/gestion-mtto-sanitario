@@ -1,5 +1,5 @@
 import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { EPPReservation, EPPReservationStatus, EPPReservationItem } from "@/store/slices/eppReservationsSlice"
+import type { EPPReservation, EPPReservationStatus, EPPReservationItem } from "@/types/epp"
 
 const COLLECTION = "eppReservations"
 

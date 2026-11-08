@@ -1,20 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as requestsService from "@/services/requestsService"
+import type { ReservationRequest, RequestItem } from "@/types/reservation"
 
-export interface RequestItem {
-  item: string
-  quantity: number
-}
-
-export interface ReservationRequest {
-  id: string
-  team: "G1" | "G2" | "G3" | "TN"
-  items: RequestItem[]
-  createdAt: string
-  status: "pendiente" | "aprobada" | "rechazada"
-  approvedItems?: RequestItem[]
-}
+export type { ReservationRequest, RequestItem } from "@/types/reservation"
 
 interface RequestsState {
   requests: ReservationRequest[]

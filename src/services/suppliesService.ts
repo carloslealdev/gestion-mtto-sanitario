@@ -1,5 +1,5 @@
 import { getAllDocuments, deleteDocument, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { Supply } from "@/store/slices/suppliesSlice"
+import type { Supply } from "@/types/supply"
 
 const COLLECTION = "supplies"
 

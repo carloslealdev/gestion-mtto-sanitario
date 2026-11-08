@@ -1,5 +1,5 @@
 import { getAllDocuments, createDocument } from "@/lib/firestore"
-import type { NightlyTaskReport } from "@/store/slices/nightlyTasksSlice"
+import type { NightlyTaskReport } from "@/types/nightly"
 
 const COLLECTION = "nightlyTasks"
 

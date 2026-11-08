@@ -1,5 +1,5 @@
 import { getAllDocuments, getDocument, setDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { MaintenanceEntry } from "@/store/slices/calendarSlice"
+import type { MaintenanceEntry } from "@/types/calendar"
 
 const COLLECTION = "calendar"
 

@@ -1,25 +1,17 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as nightlyTasksService from "@/services/nightlyTasksService"
+import type {
+  NightlyTaskEquipment,
+  NightlyTaskReport,
+  ReportType,
+} from "@/types/nightly"
 
-export type ReportType = "mantenimiento_sanitario" | "otras_tareas"
-
-export interface NightlyTaskEquipment {
-  lineId: number
-  lineName: string
-  machineId: string
-  machineName: string
-}
-
-export interface NightlyTaskReport {
-  id: string
-  reportType: ReportType
-  team: "G1" | "G2" | "G3" | "TN"
-  responsibleName: string
-  responsibleCedula: string
-  createdAt: string
-  equipment: NightlyTaskEquipment[]
-}
+export type {
+  NightlyTaskEquipment,
+  NightlyTaskReport,
+  ReportType,
+} from "@/types/nightly"
 
 interface NightlyTasksState {
   reports: NightlyTaskReport[]

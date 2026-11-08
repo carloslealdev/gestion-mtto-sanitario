@@ -1,14 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { loginWithCedula, logoutUser, registerUser } from "@/services/authService"
+import type { AuthUser, AuthUserRole } from "@/types/auth"
 
-export type AuthUserRole = "admin" | "encargado" | "general"
-
-export interface AuthUser {
-  username: string
-  name: string
-  role: AuthUserRole
-  uid: string
-}
+export type { AuthUser, AuthUserRole } from "@/types/auth"
 
 interface AuthState {
   isAuthenticated: boolean

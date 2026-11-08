@@ -1,12 +1,9 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as calendarService from "@/services/calendarService"
+import type { MaintenanceEntry } from "@/types/calendar"
 
-export interface MaintenanceEntry {
-  id: string
-  lineId: number
-  lineName: string
-}
+export type { MaintenanceEntry } from "@/types/calendar"
 
 interface CalendarState {
   currentDate: string

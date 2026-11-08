@@ -1,8 +1,8 @@
 import { getDocument, setDocument } from "@/lib/firestore"
 import type { TaskAssignment } from "./taskAssignmentsService"
 import type { NightlyScopeItem } from "./nightlyTasksUiService"
-import type { ProductionLine, SupplyRequired } from "@/store/slices/productionLinesSlice"
-import type { MaintenanceEntry } from "@/store/slices/calendarSlice"
+import type { ProductionLine, SupplyRequired } from "@/types/production"
+import type { MaintenanceEntry } from "@/types/calendar"
 
 const COLLECTION = "estimatedConsumptionToday"
 

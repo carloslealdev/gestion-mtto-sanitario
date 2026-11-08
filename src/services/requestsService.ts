@@ -1,5 +1,5 @@
 import { getAllDocuments, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { ReservationRequest, RequestItem } from "@/store/slices/requestsSlice"
+import type { ReservationRequest, RequestItem } from "@/types/reservation"
 
 const COLLECTION = "requests"
 

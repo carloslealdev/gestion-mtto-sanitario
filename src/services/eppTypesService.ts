@@ -1,5 +1,5 @@
 import { getAllDocuments, deleteDocument, createDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { EPPType } from "@/store/slices/eppTypesSlice"
+import type { EPPType } from "@/types/epp"
 
 const COLLECTION = "eppTypes"
 

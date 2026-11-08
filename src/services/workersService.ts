@@ -1,5 +1,5 @@
 import { getAllDocuments, getDocument, setDocument, updateDocument, deleteDocument, getDocRef, runTransaction } from "@/lib/firestore"
-import type { AddWorkerPayload } from "@/store/slices/workersSlice"
+import type { AddWorkerPayload } from "@/types/worker"
 
 const COLLECTION = "workers"
 
