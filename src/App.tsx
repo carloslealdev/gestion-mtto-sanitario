@@ -6,24 +6,27 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-import { useEffect } from 'react';
+import { lazy, useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { useAppTheme } from './hooks/useAppTheme';
 import { Login } from '@/components/Login';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import DashboardPage from '@/pages/DashboardPage';
-import EquiposPage from '@/pages/EquiposPage';
-import MantenimientosPage from '@/pages/MantenimientosPage';
-import GruposDeTrabajoPage from '@/pages/GruposDeTrabajoPage';
-import GrupoDetallePage from '@/pages/GrupoDetallePage';
-import GestionEPPSPage from '@/pages/GestionEPPSPage';
-import InventariosPage from '@/pages/InventariosPage';
-import CalendarioPage from '@/pages/CalendarioPage';
-import ReservasPage from '@/pages/ReservasPage';
-import ReservasEPPsPage from '@/pages/ReservasEPPsPage';
-import ReportesTareasNocturnasPage from '@/pages/ReportesTareasNocturnasPage';
-import NuevosRegistrosPage from '@/pages/NuevosRegistrosPage';
+
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const EquiposPage = lazy(() => import('@/pages/EquiposPage'));
+const MantenimientosPage = lazy(() => import('@/pages/MantenimientosPage'));
+const GruposDeTrabajoPage = lazy(() => import('@/pages/GruposDeTrabajoPage'));
+const GrupoDetallePage = lazy(() => import('@/pages/GrupoDetallePage'));
+const GestionEPPSPage = lazy(() => import('@/pages/GestionEPPSPage'));
+const InventariosPage = lazy(() => import('@/pages/InventariosPage'));
+const CalendarioPage = lazy(() => import('@/pages/CalendarioPage'));
+const ReservasPage = lazy(() => import('@/pages/ReservasPage'));
+const ReservasEPPsPage = lazy(() => import('@/pages/ReservasEPPsPage'));
+const ReportesTareasNocturnasPage = lazy(
+  () => import('@/pages/ReportesTareasNocturnasPage'),
+);
+const NuevosRegistrosPage = lazy(() => import('@/pages/NuevosRegistrosPage'));
 import { useAppSelector } from './store/hooks';
 import { useAppDispatch } from './store/hooks';
 import { setAuthFromFirebase } from './store/slices/authSlice';

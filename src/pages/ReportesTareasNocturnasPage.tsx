@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import Swal from "sweetalert2"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { fetchNightlyTasks, addNightlyTaskReportAsync, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
+import { addNightlyTaskReportAsync, type NightlyTaskEquipment, type ReportType } from "@/store/slices/nightlyTasksSlice"
 import { normalizeName } from "@/helpers/normalize"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -50,10 +50,6 @@ export default function ReportesTareasNocturnasPage() {
   const reports = useAppSelector((state) => state.nightlyTasks.reports)
   const user = useAppSelector((state) => state.auth.user)
   const allWorkers = useAppSelector((state) => state.workers.workers)
-
-  useEffect(() => {
-    dispatch(fetchNightlyTasks())
-  }, [dispatch])
 
   const [showForm, setShowForm] = useState(false)
   const [reportType, setReportType] = useState<ReportType | "">("")
