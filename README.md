@@ -13,39 +13,41 @@ Sistema de gestión de mantenimiento sanitario para equipos, trabajadores, EPPs 
 - **Redux Toolkit** para estado global
 - **Firebase Auth** para autenticación
 - **Firebase Firestore** para persistencia de datos
-- **bcryptjs** para hash de contraseñas
+- **Vitest** para tests unitarios
 - **sweetalert2** para notificaciones y diálogos
 
 ## Estructura del Proyecto
 
 ```
 gestion-mtto-sanitario/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                      # CI: lint + test + build
 ├── src/
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── DashboardLayout.tsx    # Layout principal con sidebar + header
+│   │   │   ├── DashboardLayout.tsx     # Layout con sidebar + header + Suspense
 │   │   │   ├── Header.tsx              # Header con notificaciones, theme toggle y usuario
 │   │   │   └── Sidebar.tsx             # Navegación lateral (responsive por rol)
 │   │   ├── ui/                         # Componentes shadcn/ui
-│   │   ├── Login.tsx                   # Formulario de inicio de sesión (Firebase Auth)
-│   │   └── ProtectedRoute.tsx          # Protección de rutas por rol
+│   │   └── Login.tsx                   # Formulario de inicio de sesión (Firebase Auth)
 │   ├── helpers/
 │   │   ├── normalize.ts                # normalizeName, generateIdFromName, eppNameToKey
-│   │   ├── rotation.ts                 # Rotación de grupos (3 semanas: G1, G2, G3, TN)
-│   │   └── seedMockReport.ts           # Generación de reportes mock (ya no usado en UI)
+│   │   └── rotation.ts                 # Rotación de grupos (3 semanas: G1, G2, G3, TN)
 │   ├── hooks/
 │   │   ├── useAppTheme.tsx             # Hook para inicializar tema
 │   │   └── useTheme.tsx                # Hook de tema (shadcn)
 │   ├── lib/
-│   │   ├── crypto.ts                   # hashPassword / verifyPassword (bcryptjs)
+│   │   ├── errors.ts                   # getErrorMessage para errores de RTK .unwrap()
 │   │   ├── firebase.ts                 # Inicialización Firebase (auth + firestore)
-│   │   ├── firestore.ts                # CRUD genérico para Firestore
+│   │   ├── firestore.ts                # CRUD genérico + runTransaction
+│   │   ├── inventory.ts                # Etiquetas de insumos de inventario
 │   │   └── utils.ts                    # Función cn() para clases
 │   ├── services/                       # Capa de acceso a Firestore
 │   │   ├── authService.ts              # Firebase Auth + Firestore users CRUD
 │   │   ├── calendarService.ts          # Calendario (mantenimientos por fecha)
-│   │   ├── eppRequestsService.ts        # Solicitudes de EPPs
-│   │   ├── eppReservationsService.ts    # Reservas de EPPs
+│   │   ├── eppRequestsService.ts       # Solicitudes de EPPs
+│   │   ├── eppReservationsService.ts   # Reservas de EPPs
 │   │   ├── eppTypesService.ts          # Tipos de EPP dinámicos
 │   │   ├── inventoryService.ts         # Inventario por grupo
 │   │   ├── nightlyTasksService.ts      # Reportes de tareas nocturnas
@@ -74,13 +76,10 @@ gestion-mtto-sanitario/
 │   │       ├── reservationsSlice.ts    # Reservas de insumos (Firestore async thunks)
 │   │       ├── suppliesSlice.ts        # Insumos (Firestore async thunks)
 │   │       ├── themeSlice.ts           # Tema claro/oscuro
-│   │       ├── workerCredentialsSlice.ts # Credenciales de trabajadores para creación
 │   │       └── workersSlice.ts         # Trabajadores (Firestore async thunks)
-│   ├── mock-data/                      # Datos de semilla
-│   │   ├── workers.ts                  # Interface EPPs, Worker; seed data
-│   │   ├── inventory.ts                # inventoryLabels, GroupInventory
-│   │   ├── productionLines.ts          # Seed data líneas
-│   │   └── users.ts                    # Seed data usuarios
+│   ├── types/
+│   │   ├── inventory.ts                # Tipos de inventario por grupo
+│   │   └── worker.ts                   # Tipos de EPPs del trabajador
 │   ├── pages/
 │   │   ├── DashboardPage.tsx           # Dashboard con indicadores desde Redux
 │   │   ├── EquiposPage.tsx             # Vista mock de equipos
@@ -94,12 +93,14 @@ gestion-mtto-sanitario/
 │   │   ├── ReservasEPPsPage.tsx        # Reservas y solicitudes de EPPs (todos los roles)
 │   │   ├── NuevosRegistrosPage.tsx     # CRUD: trabajadores, insumos, EPPs, líneas (admin)
 │   │   └── ReportesTareasNocturnasPage.tsx # Reportes nocturnos (encargado)
-│   ├── App.tsx                         # Firebase Auth listener + DataInitializer + Routing
+│   ├── App.tsx                         # Auth listener + DataInitializer + Routing (lazy)
 │   ├── main.tsx
 │   └── index.css
+├── firestore.rules                     # Reglas de seguridad de Firestore
+├── firebase.json
 ├── tailwind.config.js
 ├── components.json
-├── .env                                # VITE_FIREBASE_API_KEY, etc.
+├── .env.template                       # Variables VITE_FIREBASE_* requeridas
 └── package.json
 ```
 
@@ -108,10 +109,10 @@ gestion-mtto-sanitario/
 ### Sistema
 
 - **Firebase Auth** con patrón de email interno: `{cedula}@gestion-mtto.app`
-- **Firestore `users/{uid}`** almacena: `email`, `name`, `role`, `username`, `password` (hasheado con bcryptjs)
+- **Firestore `users/{uid}`** almacena: `email`, `name`, `role`, `username`
 - **`initializing: true`** en `authSlice` suprime el flash de login al recargar
-- **Admin auto-bootstrap**: al iniciar sesión con `admin` / `123456` se crea automáticamente el usuario en Firebase Auth si no existe
 - **Creación de trabajadores**: usa REST API de Firebase Identity Toolkit directamente (sin auto-login), maneja `INVALID_LOGIN_CREDENTIALS` y `EMAIL_EXISTS` para recuperar cuentas existentes
+- Las contraseñas las gestiona Firebase Auth; no se almacenan en Firestore
 
 ### Roles
 
@@ -120,11 +121,6 @@ gestion-mtto-sanitario/
 | **admin**     | Dashboard, Equipos, Mantenimientos, Calendario, Grupos, Inventarios, EPPs, Nuevos Registros, Reservas, Reportes                 |
 | **encargado** | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo su grupo), Reservas (solicitar), Reportes nocturnos |
 | **general**   | Calendario, Grupos (solo su grupo), Inventarios (solo su grupo), EPPs (solo sus EPPs), Reservas de EPPs (solicitar)             |
-
-### Credenciales
-
-- **Admin**: `admin` / `123456`
-- **Trabajadores**: cédula sin prefijo `V-` / contraseña asignada por admin (por defecto `123456`)
 
 ### Rutas por Rol
 
@@ -136,7 +132,7 @@ gestion-mtto-sanitario/
 
 ## Persistencia
 
-**Firebase Firestore** es la fuente de datos principal (sin localStorage):
+**Firebase Firestore** es la fuente de datos principal (el tema claro/oscuro se persiste en localStorage):
 
 | Colección         | Uso                                                                   |
 | ----------------- | --------------------------------------------------------------------- |
@@ -271,7 +267,7 @@ npm install
 # Iniciar desarrollo
 npm run dev
 
-# Iniciar desarrollo exponiento el host
+# Iniciar desarrollo exponiendo el host
 npx vite --host
 
 # Build para producción
@@ -282,16 +278,30 @@ npm run preview
 
 # Lint
 npm run lint
+
+# Tests (una corrida)
+npm test
+
+# Tests en modo watch
+npm run test:watch
 ```
+
+## Tests
+
+Tests unitarios con **Vitest** sobre helpers puros y services críticos con Firestore mockeado:
+
+- `src/helpers/normalize.test.ts`, `src/helpers/rotation.test.ts`
+- `src/services/suppliesService.test.ts`, `reservationsService.test.ts`, `eppRequestsService.test.ts`
+
+El CI (`.github/workflows/ci.yml`) corre `lint`, `test` y `build` en cada push y pull request.
 
 ## Notas
 
-- **Firebase**: requiere archivo `.env` con `VITE_FIREBASE_API_KEY` y demás variables de Firebase
-- **Contraseñas**: se hashean con bcryptjs antes de almacenar en Firestore
-- **Admin bootstrap**: al primer login con `admin` / `123456` se crea el usuario en Firebase Auth automáticamente
+- **Firebase**: copiá `.env.template` a `.env` y completá las variables `VITE_FIREBASE_*`
+- **Reglas de Firestore**: `firestore.rules` define el acceso; se despliegan con Firebase CLI
 - **Path aliases**: `@/` mapea a `src/`
 - **Sidebar**: dinámico según rol del usuario
-- **Rutas**: protegidas por `ProtectedRoute.tsx`, redirigen según rol
+- **Rutas**: protegidas por rol en `App.tsx`; las páginas se cargan con `React.lazy` (code-splitting)
 - **EPPs**: las claves en el trabajador se generan con `epp.code` (el código definido en el tipo de EPP)
 - **IDs de líneas/máquinas**: se generan con `generateIdFromName(name)` (3 letras + `-` + 3 dígitos)
 - **EquiposPage**: actualmente usa datos mock (pendiente de conectar a Firestore)
