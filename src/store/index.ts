@@ -14,7 +14,6 @@ import nightlyTasksReducer from "./slices/nightlyTasksSlice"
 import suppliesReducer from "./slices/suppliesSlice"
 import eppTypesReducer from "./slices/eppTypesSlice"
 import productionLinesReducer from "./slices/productionLinesSlice"
-import workerCredentialsReducer from "./slices/workerCredentialsSlice"
 
 export const store = configureStore({
   reducer: {
@@ -33,7 +32,6 @@ export const store = configureStore({
     supplies: suppliesReducer,
     eppTypes: eppTypesReducer,
     productionLines: productionLinesReducer,
-    workerCredentials: workerCredentialsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

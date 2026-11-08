@@ -20,7 +20,7 @@ import {
 import { addItemsToInventoryAsync } from "@/store/slices/inventorySlice"
 import { fetchSupplies } from "@/store/slices/suppliesSlice"
 import type { Supply } from "@/store/slices/suppliesSlice"
-import { inventoryLabels } from "@/mock-data/inventory"
+import { inventoryLabels } from "@/lib/inventory"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

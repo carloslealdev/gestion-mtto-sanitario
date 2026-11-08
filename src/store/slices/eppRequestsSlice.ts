@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as eppRequestsService from "@/services/eppRequestsService"
 
@@ -76,40 +76,7 @@ export const approveEPPRequestAsync = createAsyncThunk(
 const eppRequestsSlice = createSlice({
   name: "eppRequests",
   initialState,
-  reducers: {
-    addEPPRequest(
-      state,
-      action: PayloadAction<{ workerCedula: string; workerName: string; items: EPPRequestItem[] }>
-    ) {
-      const newRequest: EPPReservationRequest = {
-        id: `EPP-REQ-${Date.now()}`,
-        workerCedula: action.payload.workerCedula,
-        workerName: action.payload.workerName,
-        items: action.payload.items,
-        createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
-        status: "pendiente",
-      }
-      state.requests.unshift(newRequest)
-    },
-    updateEPPRequestStatus(
-      state,
-      action: PayloadAction<{ id: string; status: EPPReservationRequest["status"] }>
-    ) {
-      const request = state.requests.find((r) => r.id === action.payload.id)
-      if (request) {
-        request.status = action.payload.status
-      }
-    },
-    setEPPApprovedItems(
-      state,
-      action: PayloadAction<{ id: string; approvedItems: EPPRequestItem[] }>
-    ) {
-      const request = state.requests.find((r) => r.id === action.payload.id)
-      if (request) {
-        request.approvedItems = action.payload.approvedItems
-      }
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchEPPRequests.pending, (state) => {
@@ -150,6 +117,4 @@ const eppRequestsSlice = createSlice({
   },
 })
 
-export const { addEPPRequest, updateEPPRequestStatus, setEPPApprovedItems } =
-  eppRequestsSlice.actions
 export default eppRequestsSlice.reducer

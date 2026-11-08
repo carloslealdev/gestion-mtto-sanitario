@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { format } from "date-fns"
 import * as requestsService from "@/services/requestsService"
 
@@ -73,42 +73,7 @@ export const approveRequestAsync = createAsyncThunk(
 const requestsSlice = createSlice({
   name: "requests",
   initialState,
-  reducers: {
-    addRequest(
-      state,
-      action: PayloadAction<{ team: ReservationRequest["team"]; items: RequestItem[] }>
-    ) {
-      const newRequest: ReservationRequest = {
-        id: `REQ-${Date.now()}`,
-        team: action.payload.team,
-        items: action.payload.items,
-        createdAt: format(new Date(), "yyyy-MM-dd HH:mm"),
-        status: "pendiente",
-      }
-      state.requests.unshift(newRequest)
-    },
-    updateRequestStatus(
-      state,
-      action: PayloadAction<{ id: string; status: ReservationRequest["status"] }>
-    ) {
-      const request = state.requests.find((r) => r.id === action.payload.id)
-      if (request) {
-        request.status = action.payload.status
-      }
-    },
-    setApprovedItems(
-      state,
-      action: PayloadAction<{ id: string; approvedItems: RequestItem[] }>
-    ) {
-      const request = state.requests.find((r) => r.id === action.payload.id)
-      if (request) {
-        request.approvedItems = action.payload.approvedItems
-      }
-    },
-    deleteRequest(state, action: PayloadAction<string>) {
-      state.requests = state.requests.filter((r) => r.id !== action.payload)
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchRequests.pending, (state) => {
@@ -149,6 +114,4 @@ const requestsSlice = createSlice({
   },
 })
 
-export const { addRequest, updateRequestStatus, setApprovedItems, deleteRequest } =
-  requestsSlice.actions
 export default requestsSlice.reducer

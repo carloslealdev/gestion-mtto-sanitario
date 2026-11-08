@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
 import * as workersService from "@/services/workersService"
 import { createUserWithoutSignIn, updateUserProfile, deleteUserProfile } from "@/services/authService"
-import type { EPPs, EPPDates } from "@/mock-data/workers"
+import type { EPPs, EPPDates } from "@/types/worker"
 
 export type WorkerRole = "trabajador-encargado" | "trabajador-general"
 export type WorkTeam = "G1" | "G2" | "G3" | "TN" | "Sin asignar"

@@ -40,7 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import type { EPPs } from '@/mock-data/workers';
+import type { EPPs } from '@/types/worker';
 
 type Tab = 'trabajadores' | 'lineas' | 'insumos' | 'epps';
 

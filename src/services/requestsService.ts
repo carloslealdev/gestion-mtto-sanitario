@@ -41,8 +41,3 @@ export async function approveRequest(id: string, items: RequestItem[], approvedI
     tx.set(ref, { id, ...snap.data(), status: "aprobada", items, approvedItems })
   })
 }
-
-export async function deleteRequest(id: string): Promise<void> {
-  const { deleteDocument } = await import("@/lib/firestore")
-  await deleteDocument(COLLECTION, id)
-}

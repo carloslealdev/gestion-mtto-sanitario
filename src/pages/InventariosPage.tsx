@@ -9,11 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  inventoryLabels,
-  type GroupInventory,
-  type InventoryStatus,
-} from "@/mock-data/inventory"
+import { inventoryLabels } from "@/lib/inventory"
+import type { GroupInventory, InventoryStatus } from "@/types/inventory"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
   fetchInventory,

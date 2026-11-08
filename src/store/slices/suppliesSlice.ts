@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import * as suppliesService from "@/services/suppliesService"
 
 export interface Supply {
@@ -52,20 +52,7 @@ export const deleteSupplyAsync = createAsyncThunk(
 const suppliesSlice = createSlice({
   name: "supplies",
   initialState,
-  reducers: {
-    addSupply(state, action: PayloadAction<Supply>) {
-      state.supplies.push(action.payload)
-    },
-    updateSupply(state, action: PayloadAction<Supply>) {
-      const index = state.supplies.findIndex((s) => s.id === action.payload.id)
-      if (index !== -1) {
-        state.supplies[index] = action.payload
-      }
-    },
-    deleteSupply(state, action: PayloadAction<string>) {
-      state.supplies = state.supplies.filter((s) => s.id !== action.payload)
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchSupplies.pending, (state) => {
@@ -117,5 +104,4 @@ const suppliesSlice = createSlice({
   },
 })
 
-export const { addSupply, updateSupply, deleteSupply } = suppliesSlice.actions
 export default suppliesSlice.reducer
