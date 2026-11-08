@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/errors"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import { addEPPReservationAsync, fetchEPPReservations, updateEPPReservationStatusAsync, setEPPReceivedItemsAsync, type EPPReservationItem, type EPPReservationStatus } from "@/store/slices/eppReservationsSlice"
 import { addEPPRequestAsync, fetchEPPRequests, approveEPPRequestAsync, updateEPPRequestStatusAsync, type EPPRequestItem } from "@/store/slices/eppRequestsSlice"
@@ -187,8 +188,10 @@ export default function ReservasEPPsPage() {
       setShowForm(false)
       setIsEPPFromRequest(false)
       setApprovedEPPRequestId(null)
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la reserva en la base de datos" })
+    } catch (err) {
+      console.error("[ReservasEPPsPage] handleGenerate failed:", err)
+      const message = getErrorMessage(err, "No se pudo guardar la reserva en la base de datos")
+      Swal.fire({ icon: "error", title: "Error", text: message })
     }
   }
 

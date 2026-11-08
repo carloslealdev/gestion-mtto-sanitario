@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/errors"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
 import {
   addReservationAsync,
@@ -259,8 +260,10 @@ export default function ReservasPage() {
           timerProgressBar: true,
           showConfirmButton: false,
         })
-      } catch {
-        Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar el estado" })
+      } catch (err) {
+        console.error("[ReservasPage] handleStatusChange failed:", err)
+        const message = getErrorMessage(err, "No se pudo actualizar el estado")
+        Swal.fire({ icon: "error", title: "Error", text: message })
       }
     }
   }
@@ -295,8 +298,10 @@ export default function ReservasPage() {
           timerProgressBar: true,
           showConfirmButton: false,
         })
-      } catch {
-        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la recepción parcial" })
+      } catch (err) {
+        console.error("[ReservasPage] handleFinalizePartialReceive failed:", err)
+        const message = getErrorMessage(err, "No se pudo guardar la recepción parcial")
+        Swal.fire({ icon: "error", title: "Error", text: message })
       }
       setPartialReceiveModal(null)
       setReceivedItemsLocal([])

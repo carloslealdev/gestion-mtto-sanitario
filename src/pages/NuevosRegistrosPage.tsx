@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Swal from 'sweetalert2';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { getErrorMessage } from '@/lib/errors';
 import {
   addWorkerAsync,
   updateFullWorkerAsync,
@@ -667,8 +668,8 @@ function InsumosSection() {
       }
       setOpen(false);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Error al guardar el insumo';
+      console.error('[NuevosRegistrosPage] handleSave supply failed:', err);
+      const message = getErrorMessage(err, 'Error al guardar el insumo');
       Swal.fire({ icon: 'error', title: 'Error', text: message });
     }
   };
@@ -872,8 +873,8 @@ function EPPsSection() {
       }
       setOpen(false);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Error al guardar el EPP';
+      console.error('[NuevosRegistrosPage] handleSave EPP type failed:', err);
+      const message = getErrorMessage(err, 'Error al guardar el EPP');
       Swal.fire({ icon: 'error', title: 'Error', text: message });
     }
   };
@@ -1118,8 +1119,8 @@ function LineasSection() {
       }
       setOpen(false);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Error al guardar la línea';
+      console.error('[NuevosRegistrosPage] handleSave production line failed:', err);
+      const message = getErrorMessage(err, 'Error al guardar la línea');
       Swal.fire({ icon: 'error', title: 'Error', text: message });
     }
   };
