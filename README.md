@@ -82,7 +82,6 @@ gestion-mtto-sanitario/
 │   │   └── worker.ts                   # Tipos de EPPs del trabajador
 │   ├── pages/
 │   │   ├── DashboardPage.tsx           # Dashboard con indicadores desde Redux
-│   │   ├── EquiposPage.tsx             # Vista mock de equipos
 │   │   ├── MantenimientosPage.tsx      # Insumos por línea desde Firestore con búsqueda
 │   │   ├── GruposDeTrabajoPage.tsx     # Grupos con integrantes (filtrado por rol)
 │   │   ├── GrupoDetallePage.tsx        # Context menu: cambiar rol/grupo (persiste Firestore)
@@ -240,10 +239,6 @@ Reportes nocturnos con tipo (mantenimiento sanitario/otras tareas), equipos inte
 
 Pestañas: Trabajadores, Insumos, EPPs, Líneas de Producción. CRUD completo con validaciones, confirmaciones y notificaciones.
 
-### EquiposPage
-
-Vista mock (datos hardcodeados) de equipos con estados (operativo/mantenimiento/alerta/inactivo).
-
 ## Rotación de Grupos
 
 El sistema implementa un ciclo de rotación de 3 semanas:
@@ -339,4 +334,3 @@ Los errores de render quedan visibles en pantalla gracias al `ErrorBoundary` glo
 - **Rutas**: protegidas por rol en `App.tsx`; las páginas se cargan con `React.lazy` (code-splitting)
 - **EPPs**: las claves en el trabajador se generan con `epp.code` (el código definido en el tipo de EPP)
 - **IDs de líneas/máquinas**: se generan con `generateIdFromName(name)` (3 letras + `-` + 3 dígitos)
-- **EquiposPage**: actualmente usa datos mock (pendiente de conectar a Firestore)

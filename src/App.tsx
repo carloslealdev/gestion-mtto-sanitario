@@ -15,7 +15,6 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
-const EquiposPage = lazy(() => import('@/pages/EquiposPage'));
 const MantenimientosPage = lazy(() => import('@/pages/MantenimientosPage'));
 const GruposDeTrabajoPage = lazy(() => import('@/pages/GruposDeTrabajoPage'));
 const GrupoDetallePage = lazy(() => import('@/pages/GrupoDetallePage'));
@@ -229,8 +228,7 @@ function AppRoutes() {
         {role === 'admin' && (
           <>
             <Route path='registros' element={<NuevosRegistrosPage />} />
-            <Route path='equipos' element={<EquiposPage />} />
-            <Route path='mantenimientos' element={<MantenimientosPage />} />
+                  <Route path='mantenimientos' element={<MantenimientosPage />} />
           </>
         )}
       </Route>
