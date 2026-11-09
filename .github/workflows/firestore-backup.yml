@@ -1,0 +1,39 @@
+# Scheduled Firestore export: the database is the operation's source of truth,
+# so it must be recoverable without opening a laptop.
+#
+# The job stays skipped until the repository defines ENABLE_FIRESTORE_BACKUPS,
+# so the workflow never goes red while credentials are not configured yet.
+# Setup is documented in README.md (Operation section).
+
+name: Firestore backup
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firestore-backup
+  cancel-in-progress: false
+
+jobs:
+  export:
+    if: ${{ vars.ENABLE_FIRESTORE_BACKUPS == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}"
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Export Firestore
+        run: |
+          gcloud firestore export \
+            "gs://${{ vars.FIRESTORE_BACKUP_BUCKET }}/firestore-backups/$(date -u +%Y/%m/%d-%H%M)" \
+            --project="${{ vars.GCP_PROJECT_ID }}"

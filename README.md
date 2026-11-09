@@ -292,8 +292,43 @@ Tests unitarios con **Vitest** sobre helpers puros y services críticos con Fire
 
 - `src/helpers/normalize.test.ts`, `src/helpers/rotation.test.ts`
 - `src/services/suppliesService.test.ts`, `reservationsService.test.ts`, `eppRequestsService.test.ts`
+- `src/lib/firestore.test.ts` (límite de lectura de Firestore), `src/lib/validation.test.ts` (esquemas Zod), `src/lib/monitoring.test.ts` (registro de errores)
 
 El CI (`.github/workflows/ci.yml`) corre `lint`, `test` y `build` en cada push y pull request.
+
+## Operación en producción
+
+### Backups de Firestore
+
+La base de datos es la fuente de verdad de la operación: un borrado o un fallo de esquema no se revierten solos. El workflow **Firestore backup** (`.github/workflows/firestore-backup.yml`) exporta toda la base a un bucket de Google Cloud Storage una vez por día (05:00 UTC) y también bajo demanda desde la pestaña *Actions*.
+
+Configuración única en el repositorio de GitHub:
+
+1. Service account con `roles/datastore.importExportAdmin` y `roles/storage.admin` (o permisos de objeto sobre el bucket).
+2. Clave JSON de esa cuenta guardada como secret `GCP_SERVICE_ACCOUNT_KEY`.
+3. Variables del repositorio: `FIRESTORE_BACKUP_BUCKET` y `GCP_PROJECT_ID`.
+4. Variable `ENABLE_FIRESTORE_BACKUPS` con valor `true`. Mientras no exista, el job queda **skipped** y el workflow no marca en rojo.
+
+La exportación queda en `gs://BUCKET/firestore-backups/AAAA/MM/DD-HHMM`. Restauración con el mismo `gcloud`:
+
+```bash
+gcloud firestore import "gs://BUCKET/firestore-backups/2026/11/09-0500" --project=PROJECT_ID
+```
+
+### Monitoreo de errores
+
+Todo error inesperado pasa por `src/lib/monitoring.ts` (`logError`):
+
+- `console.error` estructurado (siempre).
+- Buffer en memoria con los últimos 20 errores (`getRecentErrors()`), útil para soporte.
+- Handlers globales de `window.error` y `unhandledrejection` instalados en `main.tsx`.
+- Con la variable opcional `VITE_FIREBASE_MEASUREMENT_ID` (propiedad GA4 del proyecto), además se reporta como evento `exception` a Firebase Analytics. Sin esa variable, el reporte a Analytics queda desactivado y solo se registra en consola.
+
+Los errores de render quedan visibles en pantalla gracias al `ErrorBoundary` global (`src/components/ErrorBoundary.tsx`): uno en la raíz de la app y otro por vista (dentro de `DashboardLayout`), así una página rota no tumba el resto del layout.
+
+### Validación de datos (Zod)
+
+`src/lib/validation.ts` valida cada documento leído de Firestore contra un esquema por colección (12 colecciones cubiertas, las que se leen vía `lib/firestore.ts`). La semántica es **registrar y conservar**: un documento que no cumple su esquema se reporta vía `logError` con colección, id e incidencias, pero se devuelve igual — la validación nunca hace desaparecer datos de las listas o reportes. Los esquemas están anclados a los tipos de dominio (`defineSchema<T>`), así que una deriva entre esquema y tipo rompe el build.
 
 ## Notas
 
