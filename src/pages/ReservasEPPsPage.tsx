@@ -9,13 +9,6 @@ import { fetchEPPTypes } from "@/store/slices/eppTypesSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,37 +16,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Plus, Trash2, Search, Eye, ChevronDown, CheckCircle } from "lucide-react"
-
-const eppLabels: Record<string, string> = {
-  casco: "Casco",
-  lentes: "Lentes",
-  botas: "Botas",
-  auditivo: "Protector Auditivo",
-  fullFace: "Máscara Completa",
-}
-
-const statusConfig: Record<string, { color: string; label: string }> = {
-  pendiente: { color: "bg-yellow-500", label: "Pendiente" },
-  retirada_completa: { color: "bg-green-500", label: "Recibida Completa" },
-  retirada_parcial: { color: "bg-blue-500", label: "Recibida Parcial" },
-  cancelada: { color: "bg-gray-500", label: "Cancelada" },
-}
-
-interface FormItem {
-  epp: string
-  quantity: number
-  talla: number | null
-}
-
-interface DetailData {
-  id: string
-  workerCedula: string
-  workerName: string
-  items: EPPReservationItem[]
-  createdAt: string
-  status: string
-  receivedItems?: EPPReservationItem[]
-}
+import {
+  eppLabels,
+  statusConfig,
+  type EppDetailData,
+  type EppRequestDetailData,
+  type FormItem,
+} from "./reservas-epp/constants"
+import { EppReserveDetailDialog } from "./reservas-epp/EppReserveDetailDialog"
+import { EppRecibidaParcialDialog } from "./reservas-epp/EppRecibidaParcialDialog"
+import { EppSolicitudDetailDialog } from "./reservas-epp/EppSolicitudDetailDialog"
 
 export default function ReservasEPPsPage() {
   const dispatch = useAppDispatch()
@@ -68,20 +40,13 @@ export default function ReservasEPPsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchDate, setSearchDate] = useState("")
   const [searchStatus, setSearchStatus] = useState("")
-  const [detailData, setDetailData] = useState<DetailData | null>(null)
+  const [detailData, setDetailData] = useState<EppDetailData | null>(null)
   const [partialReceiveModal, setPartialReceiveModal] = useState<{ id: string; items: EPPReservationItem[] } | null>(null)
   const [receivedItems, setReceivedItemsLocal] = useState<EPPReservationItem[]>([])
   const eppRequests = useAppSelector((state) => state.eppRequests.requests)
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestItems, setRequestItems] = useState<FormItem[]>([])
-  const [selectedEPPRequest, setSelectedEPPRequest] = useState<{
-    id: string
-    workerCedula: string
-    workerName: string
-    items: EPPRequestItem[]
-    createdAt: string
-    status: string
-  } | null>(null)
+  const [selectedEPPRequest, setSelectedEPPRequest] = useState<EppRequestDetailData | null>(null)
   const [isEPPFromRequest, setIsEPPFromRequest] = useState(false)
   const [approvedEPPRequestId, setApprovedEPPRequestId] = useState<string | null>(null)
 
@@ -875,229 +840,34 @@ export default function ReservasEPPsPage() {
         </Card>
       )}
 
-      <Dialog open={detailData !== null} onOpenChange={() => setDetailData(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalle de Reserva de EPPs</DialogTitle>
-          </DialogHeader>
-          {detailData && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Trabajador:</span>
-                  <p className="font-medium">{detailData.workerName}</p>
-                  <p className="text-muted-foreground text-xs">{detailData.workerCedula}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Fecha y Hora:</span>
-                  <p className="font-medium">{detailData.createdAt}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Estado:</span>
-                  <p className="font-medium">
-                    <span className={`text-xs text-white px-2 py-1 rounded ${statusConfig[detailData.status].color}`}>
-                      {statusConfig[detailData.status].label}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div>
-                <span className="text-muted-foreground font-medium">EPPs Solicitados:</span>
-                <div className="mt-2 space-y-2">
-                  {detailData.items.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                      <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                      <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {detailData.status === "retirada_parcial" && detailData.receivedItems && (
-                <div>
-                  <span className="text-muted-foreground font-medium">EPPs Recibidos:</span>
-                  <div className="mt-2 space-y-2">
-                    {detailData.receivedItems.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                        <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                        <Badge variant="default" className="bg-green-500">Recibido: {item.quantity}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EppReserveDetailDialog
+        reservation={detailData}
+        getEPPName={getEPPName}
+        onClose={() => setDetailData(null)}
+      />
 
-      <Dialog open={partialReceiveModal !== null} onOpenChange={() => setPartialReceiveModal(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Recibida Parcial - Seleccionar items</DialogTitle>
-          </DialogHeader>
-          {partialReceiveModal && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecciona los items que fueron recibidos. Los items eliminados no fueron recibidos.
-              </p>
-              <div className="space-y-2">
-                {receivedItems.map((item, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-muted rounded">
-                    <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max={item.quantity}
-                        value={item.quantity}
-                        onChange={(e) => handleReceivedItemQuantityChange(index, Number(e.target.value))}
-                        className="w-20 text-center"
-                      />
-                      <span className="text-xs text-muted-foreground">/ {item.quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveReceivedItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {receivedItems.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-4">
-                  No hay items remaining. Todos los items fueron rechazados.
-                </p>
-              )}
-              <div className="flex gap-2 pt-4 justify-end">
-                <Button variant="outline" onClick={() => {
-                  setPartialReceiveModal(null)
-                  setReceivedItemsLocal([])
-                }}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleFinalizePartialReceive}>
-                  Finalizar
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EppRecibidaParcialDialog
+        modal={partialReceiveModal}
+        receivedItems={receivedItems}
+        getEPPName={getEPPName}
+        onClose={() => {
+          setPartialReceiveModal(null)
+          setReceivedItemsLocal([])
+        }}
+        onQuantityChange={handleReceivedItemQuantityChange}
+        onRemoveItem={handleRemoveReceivedItem}
+        onFinalize={handleFinalizePartialReceive}
+      />
 
-      <Dialog open={selectedEPPRequest !== null} onOpenChange={() => setSelectedEPPRequest(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalle de Solicitud de EPPs</DialogTitle>
-          </DialogHeader>
-          {selectedEPPRequest && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Trabajador:</span>
-                  <p className="font-medium">{selectedEPPRequest.workerName}</p>
-                  <p className="text-muted-foreground text-xs">{selectedEPPRequest.workerCedula}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Fecha y Hora:</span>
-                  <p className="font-medium">{selectedEPPRequest.createdAt}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Estado:</span>
-                  <p className="font-medium">
-                    <span className={`text-xs text-white px-2 py-1 rounded ${
-                      selectedEPPRequest.status === "pendiente" ? "bg-yellow-500" :
-                      selectedEPPRequest.status === "aprobada" ? "bg-green-500" : "bg-red-500"
-                    }`}>
-                      {selectedEPPRequest.status === "pendiente" ? "Pendiente" :
-                       selectedEPPRequest.status === "aprobada" ? "Aprobada" : "Rechazada"}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              {selectedEPPRequest.status === "aprobada" ? (
-                <>
-                  <div>
-                    <span className="text-muted-foreground font-medium">EPPs Aprobados:</span>
-                    <div className="mt-2 space-y-2">
-                      {(() => {
-                        const request = eppRequests.find((r) => r.id === selectedEPPRequest.id)
-                        const approvedItems = request?.approvedItems || selectedEPPRequest.items
-                        return approvedItems.map((item, i) => {
-                          const requestedItem = selectedEPPRequest.items.find((s) => s.epp === item.epp)
-                          const hasDifference = requestedItem && (requestedItem.quantity !== item.quantity || requestedItem.talla !== item.talla)
-                          return (
-                            <div key={i} className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200">
-                              <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                              <div className="flex items-center gap-2">
-                                {hasDifference && (
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    {requestedItem?.quantity}
-                                  </span>
-                                )}
-                                <Badge variant="default" className="bg-green-500">Aprobado: {item.quantity}</Badge>
-                              </div>
-                            </div>
-                          )
-                        })
-                      })()}
-                    </div>
-                  </div>
-                  {(() => {
-                    const request = eppRequests.find((r) => r.id === selectedEPPRequest.id)
-                    const approvedItems = request?.approvedItems || selectedEPPRequest.items
-                    const hasDifference = selectedEPPRequest.items.some((s) => {
-                      const approved = approvedItems.find((a) => a.epp === s.epp)
-                      return !approved || approved.quantity !== s.quantity || approved.talla !== s.talla
-                    })
-                    if (!hasDifference) return null
-                    return (
-                      <div>
-                        <span className="text-muted-foreground font-medium">EPPs Solicitados (original):</span>
-                        <div className="mt-2 space-y-2">
-                          {selectedEPPRequest.items.map((item, i) => {
-                            const approved = approvedItems.find((a) => a.epp === item.epp)
-                            if (approved && approved.quantity === item.quantity && approved.talla === item.talla) return null
-                            return (
-                              <div key={i} className="flex justify-between items-center p-2 bg-muted rounded opacity-60">
-                                <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                                <Badge variant="secondary">Solicitado: {item.quantity}</Badge>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </>
-              ) : (
-                <div>
-                  <span className="text-muted-foreground font-medium">EPPs Solicitados:</span>
-                  <div className="mt-2 space-y-2">
-                    {selectedEPPRequest.items.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
-                        <span>{getEPPName(item.epp)}{item.talla ? ` (Talla ${item.talla})` : ""}</span>
-                        <Badge variant="secondary">Cantidad: {item.quantity}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selectedEPPRequest.status === "pendiente" && isAdmin && (
-                <div className="flex gap-2 pt-4 justify-end">
-                  <Button variant="outline" onClick={() => handleRejectEPPRequest(selectedEPPRequest.id)}>
-                    Rechazar
-                  </Button>
-                  <Button onClick={() => handleApproveEPPRequest(selectedEPPRequest.id)}>
-                    Aprobar y crear orden
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EppSolicitudDetailDialog
+        request={selectedEPPRequest}
+        eppRequests={eppRequests}
+        isAdmin={isAdmin}
+        getEPPName={getEPPName}
+        onClose={() => setSelectedEPPRequest(null)}
+        onApprove={handleApproveEPPRequest}
+        onReject={handleRejectEPPRequest}
+      />
     </div>
   )
 }
