@@ -14,6 +14,7 @@ import {
   type Transaction,
 } from "firebase/firestore"
 import { db } from "./firebase"
+import { validateDocument } from "./validation"
 
 // Atomic read-modify-write: all reads must happen before writes inside the
 // callback; Firestore retries the whole transaction on contention.
@@ -34,13 +35,15 @@ export async function getAllDocuments<T>(collectionName: string, sortField?: str
     ? query(getCollectionRef(collectionName), orderBy(sortField, sortDir || "asc"))
     : query(getCollectionRef(collectionName))
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as T & { id: string }))
+  return snapshot.docs.map((doc) =>
+    validateDocument(collectionName, { id: doc.id, ...doc.data() } as T & { id: string })
+  )
 }
 
 export async function getDocument<T>(collectionName: string, docId: string): Promise<(T & { id: string }) | null> {
   const docSnap = await getDoc(getDocRef(collectionName, docId))
   if (!docSnap.exists()) return null
-  return { id: docSnap.id, ...docSnap.data() } as T & { id: string }
+  return validateDocument(collectionName, { id: docSnap.id, ...docSnap.data() } as T & { id: string })
 }
 
 export async function setDocument(collectionName: string, docId: string, data: DocumentData) {
