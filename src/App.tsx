@@ -12,6 +12,7 @@ import { store } from './store';
 import { useAppTheme } from './hooks/useAppTheme';
 import { Login } from '@/components/Login';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const EquiposPage = lazy(() => import('@/pages/EquiposPage'));
@@ -262,7 +263,9 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeInitializer />
-      <AppContent />
+      <ErrorBoundary title='Error inesperado en la aplicación'>
+        <AppContent />
+      </ErrorBoundary>
     </Provider>
   );
 }
